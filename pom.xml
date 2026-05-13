@@ -17,6 +17,7 @@
 		<module>fractals</module>
 		<module>dna</module>
 		<module>grayscott</module>
+		<module>javassist</module>
 	</modules>
 
 </project>
