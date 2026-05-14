@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -32,16 +32,11 @@ public final class DynamoDbMetricsStore {
     }
 
     public static void store(String workload, Map<String, String> params, Map<String, Long> metrics) {
-        if (!hasAwsEnv()) {
-            System.out.println("[MetricsStore] Missing AWS credentials in environment; skipping DynamoDB write.");
-            return;
-        }
-
         String tableName = tableName();
         Region region = awsRegion();
 
         try (DynamoDbClient client = DynamoDbClient.builder()
-                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .region(region)
                 .build()) {
 
@@ -75,14 +70,8 @@ public final class DynamoDbMetricsStore {
                     .item(item)
                     .build());
         } catch (DynamoDbException | SdkClientException e) {
-            System.out.println("[MetricsStore] Failed to store metrics: " + e.getMessage());
+            System.out.println("[MetricsStore] Failed to store metrics (AWS credentials may not be configured): " + e.getMessage());
         }
-    }
-
-    private static boolean hasAwsEnv() {
-        String accessKey = System.getenv(ENV_ACCESS_KEY);
-        String secretKey = System.getenv(ENV_SECRET_KEY);
-        return accessKey != null && !accessKey.isBlank() && secretKey != null && !secretKey.isBlank();
     }
 
     private static String tableName() {

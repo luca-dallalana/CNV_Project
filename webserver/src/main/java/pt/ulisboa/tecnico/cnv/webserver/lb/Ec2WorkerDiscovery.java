@@ -3,7 +3,7 @@ package pt.ulisboa.tecnico.cnv.webserver.lb;
 import java.util.ArrayList;
 import java.util.List;
 
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.DescribeInstancesRequest;
 import software.amazon.awssdk.services.ec2.model.Filter;
@@ -19,7 +19,7 @@ public final class Ec2WorkerDiscovery implements WorkerDiscovery {
         this.config = config;
         this.ec2Client = Ec2Client.builder()
                 .region(config.getAwsRegion())
-                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
     }
 
