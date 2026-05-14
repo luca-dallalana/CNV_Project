@@ -48,12 +48,17 @@ public final class LoadBalancerHandler implements HttpHandler {
         String query = exchange.getRequestURI().getRawQuery();
         Map<String, String> params = QueryParams.parse(query);
         long predictedComplexity = complexityEstimator.estimate(workload, params);
+        System.out.println(String.format("[LB] Request: workload=%s, complexity=%d", workload, predictedComplexity));
         int maxAttempts = Math.max(1, config.getRequestRetryCount() + 1);
         Set<String> excluded = new HashSet<>();
         IOException lastFailure = null;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             WorkerNode worker = scheduler.selectWorker(excluded, predictedComplexity);
+            if (worker != null) {
+                System.out.println(String.format("[LB] Selected worker: %s (backlog=%d, inflight=%d)",
+                    worker.getInstanceId(), worker.getEstimatedQueuedWork(), worker.getInflightRequests()));
+            }
             if (worker == null) {
                 writeText(exchange, 503, "No healthy workers available.");
                 return;
@@ -64,8 +69,11 @@ public final class LoadBalancerHandler implements HttpHandler {
                 WorkerHttpClient.ForwardResult result = workerHttpClient.forward(worker, path, query);
                 copyHeaders(exchange, result.getHeaders());
                 writeText(exchange, result.getStatusCode(), result.getBody());
+                System.out.println(String.format("[LB] Forwarded successfully to %s (status=%d)",
+                    worker.getInstanceId(), result.getStatusCode()));
                 return;
             } catch (IOException e) {
+                System.out.println(String.format("[LB] Forward failed to %s: %s", worker.getInstanceId(), e.getMessage()));
                 excluded.add(worker.getInstanceId());
                 lastFailure = e;
             } finally {
