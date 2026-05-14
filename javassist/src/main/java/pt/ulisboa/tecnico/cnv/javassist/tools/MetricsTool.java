@@ -15,9 +15,6 @@ public class MetricsTool extends AbstractJavassistTool {
     private static final ThreadLocal<Long> methods = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> startTimeNanos = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> loopIterations = ThreadLocal.withInitial(() -> 0L);
-    private static final ThreadLocal<Long> pixelUpdates = ThreadLocal.withInitial(() -> 0L);
-    private static final ThreadLocal<Long> matrixUpdates = ThreadLocal.withInitial(() -> 0L);
-    private static final ThreadLocal<Long> dnaComparisons = ThreadLocal.withInitial(() -> 0L);
 
     public MetricsTool(List<String> packageNameList, String writeDestination) {
         super(packageNameList, writeDestination);
@@ -29,9 +26,6 @@ public class MetricsTool extends AbstractJavassistTool {
         methods.set(0L);
         startTimeNanos.set(System.nanoTime());
         loopIterations.set(0L);
-        pixelUpdates.set(0L);
-        matrixUpdates.set(0L);
-        dnaComparisons.set(0L);
     }
 
     public static Map<String, Long> getMetrics() {
@@ -41,9 +35,6 @@ public class MetricsTool extends AbstractJavassistTool {
         metrics.put("methods", methods.get());
         metrics.put("executionTimeNanos", System.nanoTime() - startTimeNanos.get());
         metrics.put("loopIterations", loopIterations.get());
-        metrics.put("pixelUpdates", pixelUpdates.get());
-        metrics.put("matrixUpdates", matrixUpdates.get());
-        metrics.put("dnaComparisons", dnaComparisons.get());
         return metrics;
     }
 
@@ -53,9 +44,6 @@ public class MetricsTool extends AbstractJavassistTool {
         methods.remove();
         startTimeNanos.remove();
         loopIterations.remove();
-        pixelUpdates.remove();
-        matrixUpdates.remove();
-        dnaComparisons.remove();
     }
 
     public static void incBasicBlock(int length) {
@@ -69,18 +57,6 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void incLoopIterations() {
         loopIterations.set(loopIterations.get() + 1L);
-    }
-
-    public static void incPixelUpdates() {
-        pixelUpdates.set(pixelUpdates.get() + 1L);
-    }
-
-    public static void incMatrixUpdates() {
-        matrixUpdates.set(matrixUpdates.get() + 1L);
-    }
-
-    public static void incDnaComparisons() {
-        dnaComparisons.set(dnaComparisons.get() + 1L);
     }
 
     @Override
@@ -191,16 +167,13 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void onRequestExit(String workload, Map<String, String> params) {
         Map<String, Long> metrics = getMetrics();
-        System.out.println(String.format("[Metrics] Thread=%s, Blocks=%d, Insts=%d, Methods=%d, TimeNs=%d, Loops=%d, Pixels=%d, Matrix=%d, DnaComp=%d",
+        System.out.println(String.format("[Metrics] Thread=%s, Blocks=%d, Insts=%d, Methods=%d, TimeNs=%d, Loops=%d",
                 Thread.currentThread().getId(),
                 metrics.get("basicBlocks"),
                 metrics.get("instructions"),
                 metrics.get("methods"),
                 metrics.get("executionTimeNanos"),
-                metrics.get("loopIterations"),
-                metrics.get("pixelUpdates"),
-                metrics.get("matrixUpdates"),
-                metrics.get("dnaComparisons")));
+                metrics.get("loopIterations")));
         pt.ulisboa.tecnico.cnv.mss.DynamoDbMetricsStore.store(workload, params, metrics);
         cleanup();
     }
