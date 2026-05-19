@@ -12,8 +12,6 @@ public class MetricsTool extends AbstractJavassistTool {
 
     private static final ThreadLocal<Long> basicBlocks = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> instructions = ThreadLocal.withInitial(() -> 0L);
-    private static final ThreadLocal<Long> methods = ThreadLocal.withInitial(() -> 0L);
-    private static final ThreadLocal<Long> startTimeNanos = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> loopIterations = ThreadLocal.withInitial(() -> 0L);
 
     public MetricsTool(List<String> packageNameList, String writeDestination) {
@@ -23,8 +21,6 @@ public class MetricsTool extends AbstractJavassistTool {
     public static void reset() {
         basicBlocks.set(0L);
         instructions.set(0L);
-        methods.set(0L);
-        startTimeNanos.set(System.nanoTime());
         loopIterations.set(0L);
     }
 
@@ -32,8 +28,6 @@ public class MetricsTool extends AbstractJavassistTool {
         Map<String, Long> metrics = new HashMap<>();
         metrics.put("basicBlocks", basicBlocks.get());
         metrics.put("instructions", instructions.get());
-        metrics.put("methods", methods.get());
-        metrics.put("executionTimeNanos", System.nanoTime() - startTimeNanos.get());
         metrics.put("loopIterations", loopIterations.get());
         return metrics;
     }
@@ -41,18 +35,12 @@ public class MetricsTool extends AbstractJavassistTool {
     public static void cleanup() {
         basicBlocks.remove();
         instructions.remove();
-        methods.remove();
-        startTimeNanos.remove();
         loopIterations.remove();
     }
 
     public static void incBasicBlock(int length) {
         basicBlocks.set(basicBlocks.get() + 1L);
         instructions.set(instructions.get() + length);
-    }
-
-    public static void incMethod() {
-        methods.set(methods.get() + 1L);
     }
 
     public static void incLoopIterations() {
@@ -70,7 +58,7 @@ public class MetricsTool extends AbstractJavassistTool {
         String className = behavior.getDeclaringClass().getName();
         String workload = workloadForClass(className);
         if (workload != null && (isHttpHandlerMethod(behavior) || isLambdaHandlerMethod(behavior))) {
-            behavior.insertBefore(String.format("%s.reset();%s.incMethod();", MetricsTool.class.getName(), MetricsTool.class.getName()));
+            behavior.insertBefore(String.format("%s.reset();", MetricsTool.class.getName()));
             behavior.insertAfter(buildRequestExitCode(workload, isHttpHandlerMethod(behavior)), true);
             super.transform(behavior);
             return;
@@ -80,7 +68,6 @@ public class MetricsTool extends AbstractJavassistTool {
             return;
         }
 
-        behavior.insertBefore(String.format("%s.incMethod();", MetricsTool.class.getName()));
         System.out.println(String.format("[%s] Instrumented method: %s", MetricsTool.class.getSimpleName(), behavior.getLongName()));
         super.transform(behavior);
     }
@@ -167,12 +154,10 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void onRequestExit(String workload, Map<String, String> params) {
         Map<String, Long> metrics = getMetrics();
-        System.out.println(String.format("[Metrics] Thread=%s, Blocks=%d, Insts=%d, Methods=%d, TimeNs=%d, Loops=%d",
+        System.out.println(String.format("[Metrics] Thread=%s, Blocks=%d, Insts=%d, Loops=%d",
                 Thread.currentThread().getId(),
                 metrics.get("basicBlocks"),
                 metrics.get("instructions"),
-                metrics.get("methods"),
-                metrics.get("executionTimeNanos"),
                 metrics.get("loopIterations")));
         pt.ulisboa.tecnico.cnv.mss.DynamoDbMetricsStore.store(workload, params, metrics);
         cleanup();

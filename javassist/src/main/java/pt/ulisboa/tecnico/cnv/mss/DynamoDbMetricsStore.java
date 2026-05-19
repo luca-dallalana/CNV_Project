@@ -50,12 +50,7 @@ public final class DynamoDbMetricsStore {
             item.put("timestamp", AttributeValue.builder().n(Long.toString(System.currentTimeMillis())).build());
             item.put("basicBlocks", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("basicBlocks", 0L))).build());
             item.put("instructions", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("instructions", 0L))).build());
-            item.put("methods", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("methods", 0L))).build());
-            item.put("executionTimeNanos", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("executionTimeNanos", 0L))).build());
             item.put("loopIterations", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("loopIterations", 0L))).build());
-            item.put("pixelUpdates", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("pixelUpdates", 0L))).build());
-            item.put("matrixUpdates", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("matrixUpdates", 0L))).build());
-            item.put("dnaComparisons", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("dnaComparisons", 0L))).build());
 
             if (params != null && !params.isEmpty()) {
                 Map<String, AttributeValue> paramValues = new HashMap<>();

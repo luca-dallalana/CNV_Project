@@ -12,7 +12,6 @@ public final class LbConfig {
     private final int listenPort;
     private final int workerPort;
     private final String workerProtocol;
-    private final String healthPath;
     private final String workerTagKey;
     private final String workerTagValue;
     private final Region awsRegion;
@@ -34,7 +33,6 @@ public final class LbConfig {
             int listenPort,
             int workerPort,
             String workerProtocol,
-            String healthPath,
             String workerTagKey,
             String workerTagValue,
             Region awsRegion,
@@ -54,7 +52,6 @@ public final class LbConfig {
         this.listenPort = listenPort;
         this.workerPort = workerPort;
         this.workerProtocol = workerProtocol;
-        this.healthPath = healthPath;
         this.workerTagKey = workerTagKey;
         this.workerTagValue = workerTagValue;
         this.awsRegion = awsRegion;
@@ -90,7 +87,6 @@ public final class LbConfig {
                 envInt("LB_PORT", 8000),
                 envInt("LB_WORKER_PORT", 8000),
                 envString("LB_WORKER_PROTOCOL", "http"),
-                envString("LB_HEALTH_PATH", "/"),
                 envString("LB_WORKER_TAG_KEY", "cnv-role"),
                 envString("LB_WORKER_TAG_VALUE", "worker"),
                 region,
@@ -160,9 +156,6 @@ public final class LbConfig {
         return workerProtocol;
     }
 
-    public String getHealthPath() {
-        return healthPath;
-    }
 
     public String getWorkerTagKey() {
         return workerTagKey;

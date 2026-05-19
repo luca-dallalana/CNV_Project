@@ -75,7 +75,6 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         long instructions = parseLong(item.get("instructions"));
         long loops = parseLong(item.get("loopIterations"));
         long basicBlocks = parseLong(item.get("basicBlocks"));
-        long methods = parseLong(item.get("methods"));
 
         if (instructions > 0L) {
             return instructions + (loops * 10L);
@@ -83,10 +82,7 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         if (loops > 0L) {
             return loops * 100L;
         }
-        if (basicBlocks > 0L) {
-            return basicBlocks * 50L;
-        }
-        return methods * 20L;
+        return basicBlocks * 50L;
     }
 
     private static Map<String, String> extractParams(Map<String, AttributeValue> item) {
