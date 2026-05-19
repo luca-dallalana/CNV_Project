@@ -43,6 +43,12 @@
           <scope>compile</scope>
       </dependency>
       <dependency>
+          <groupId>pt.ulisboa.tecnico.cnv</groupId>
+          <artifactId>javassist</artifactId>
+          <version>1.0.0-SNAPSHOT</version>
+          <scope>compile</scope>
+      </dependency>
+      <dependency>
           <groupId>software.amazon.awssdk</groupId>
           <artifactId>ec2</artifactId>
       </dependency>
@@ -66,11 +72,9 @@
                 <descriptorRefs>
                     <descriptorRef>jar-with-dependencies</descriptorRef>
                 </descriptorRefs>
-                <!-- UNCOMMENT TO RUN WITH JAVASSIST
                 <archive>
                     <manifestFile>../javassist/src/main/resources/META-INF/MANIFEST.MF</manifestFile>
                 </archive>
-                -->
             </configuration>
             <executions>
                 <execution>

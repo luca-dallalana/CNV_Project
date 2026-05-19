@@ -1,3 +1,8 @@
 .idea
 **/target/
 *.class
+*.pem
+.aws-deployment-vars.sh
+.aws-deployment-vars.sh.bak
+.DS_Store
+*.bak
