@@ -66,7 +66,26 @@ public class MetricsTool extends AbstractJavassistTool {
 
     @Override
     protected void transform(BasicBlock block) throws CannotCompileException {
-        block.behavior.insertAt(block.line, String.format("%s.incBasicBlock(%s);", MetricsTool.class.getName(), block.getLength()));
+        boolean isLoopBlock = isLoopHeader(block);
+
+        String instrumentationCode = String.format("%s.incBasicBlock(%s);",
+            MetricsTool.class.getName(), block.getLength());
+
+        if (isLoopBlock) {
+            instrumentationCode += String.format("%s.incLoopIterations();",
+                MetricsTool.class.getName());
+        }
+
+        block.behavior.insertAt(block.line, instrumentationCode);
+    }
+
+    private boolean isLoopHeader(BasicBlock block) {
+        for (int incomingPosition : block.entrances) {
+            if (incomingPosition >= block.position) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean shouldInstrumentMethod(CtBehavior behavior) throws Exception {
