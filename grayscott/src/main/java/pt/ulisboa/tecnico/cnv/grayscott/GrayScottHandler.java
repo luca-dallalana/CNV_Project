@@ -4,6 +4,8 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import pt.ulisboa.tecnico.cnv.javassist.tools.MetricsTool;
+import pt.ulisboa.tecnico.cnv.mss.DynamoDbMetricsStore;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -64,15 +66,24 @@ public class GrayScottHandler implements HttpHandler, RequestHandler<Map<String,
             boolean stopOnExtinction = Boolean.parseBoolean(parameters.getOrDefault("stopOnExtinction", "false"));
             String seedMode = parameters.getOrDefault("seedMode", "center");
 
+            // Reset metrics and execute workload
+            MetricsTool.reset();
             String response = handleWorkload(size, maxIterations, F, K, stopOnExtinction, seedMode);
+
+            // Collect and store metrics
+            Map<String, Long> metrics = MetricsTool.getMetrics();
+            MetricsTool.logMetrics();
+            DynamoDbMetricsStore.store("grayscott", parameters, metrics);
+            MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.length());
             OutputStream os = he.getResponseBody();
             os.write(response.getBytes());
             os.close();
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
+            MetricsTool.cleanup();  // Cleanup on error
             e.printStackTrace();
-            String errorResponse = "{ \"error\":\"Invalid parameter format.\"}";
+            String errorResponse = "{ \"error\":\"" + e.getMessage() + "\"}";
             he.sendResponseHeaders(400, errorResponse.length());
             OutputStream os = he.getResponseBody();
             os.write(errorResponse.getBytes());

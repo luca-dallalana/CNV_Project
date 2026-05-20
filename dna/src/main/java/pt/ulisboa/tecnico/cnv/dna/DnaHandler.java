@@ -15,6 +15,8 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import pt.ulisboa.tecnico.cnv.javassist.tools.MetricsTool;
+import pt.ulisboa.tecnico.cnv.mss.DynamoDbMetricsStore;
 
 import static pt.ulisboa.tecnico.cnv.dna.Dna.runDna;
 
@@ -58,22 +60,29 @@ public class DnaHandler implements HttpHandler, RequestHandler<Map<String, Strin
         try {
             String seq1Param = URLDecoder.decode(parameters.getOrDefault("seq1", "seq1:ATGC"), StandardCharsets.UTF_8);
             String seq2Param = URLDecoder.decode(parameters.getOrDefault("seq2", "seq2:ATGC"), StandardCharsets.UTF_8);
-
             String minLengthParam = parameters.getOrDefault("minLength", "1");
             String stopOnFirstParam = parameters.getOrDefault("stopOnFirst", "false");
             int minLength = Integer.parseInt(minLengthParam);
             boolean stopOnFirst = Boolean.parseBoolean(stopOnFirstParam);
 
+            // Reset metrics and execute workload
+            MetricsTool.reset();
             String response = handleWorkload(seq1Param, seq2Param, minLength, stopOnFirst);
+
+            // Collect and store metrics
+            Map<String, Long> metrics = MetricsTool.getMetrics();
+            MetricsTool.logMetrics();
+            DynamoDbMetricsStore.store("dna", parameters, metrics);
+            MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.getBytes().length);
             OutputStream os = he.getResponseBody();
             os.write(response.getBytes());
             os.close();
-
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
+            MetricsTool.cleanup();  // Cleanup on error
             e.printStackTrace();
-            String errorResponse = "{ \" error\":\" Invalid minLength parameter: " + e.getMessage() + "\"}";
+            String errorResponse = "{ \"error\":\"" + e.getMessage() + "\"}";
             he.sendResponseHeaders(400, errorResponse.getBytes().length);
             OutputStream os = he.getResponseBody();
             os.write(errorResponse.getBytes());

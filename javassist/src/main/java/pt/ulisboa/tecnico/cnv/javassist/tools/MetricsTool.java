@@ -55,20 +55,12 @@ public class MetricsTool extends AbstractJavassistTool {
 
     @Override
     protected void transform(CtBehavior behavior) throws Exception {
-        String className = behavior.getDeclaringClass().getName();
-        String workload = workloadForClass(className);
-        if (workload != null && isHttpHandlerMethod(behavior)) {
-            behavior.insertBefore(String.format("%s.reset();", MetricsTool.class.getName()));
-            behavior.insertAfter(buildRequestExitCode(workload), true);
-            super.transform(behavior);
-            return;
-        }
-
         if (!shouldInstrumentMethod(behavior)) {
             return;
         }
 
-        System.out.println(String.format("[%s] Instrumented method: %s", MetricsTool.class.getSimpleName(), behavior.getLongName()));
+        System.out.println(String.format("[%s] Instrumented method: %s",
+            MetricsTool.class.getSimpleName(), behavior.getLongName()));
         super.transform(behavior);
     }
 
@@ -112,43 +104,12 @@ public class MetricsTool extends AbstractJavassistTool {
         return true;
     }
 
-    private static boolean isHttpHandlerMethod(CtBehavior behavior) throws Exception {
-        if (!"handle".equals(behavior.getName())) {
-            return false;
-        }
-        CtClass[] params = behavior.getParameterTypes();
-        return params.length == 1 && "com.sun.net.httpserver.HttpExchange".equals(params[0].getName());
-    }
-
-    private static String workloadForClass(String className) {
-        if ("pt.ulisboa.tecnico.cnv.dna.DnaHandler".equals(className)) {
-            return "dna";
-        }
-        if ("pt.ulisboa.tecnico.cnv.fractals.FractalsHandler".equals(className)) {
-            return "fractals";
-        }
-        if ("pt.ulisboa.tecnico.cnv.grayscott.GrayScottHandler".equals(className)) {
-            return "grayscott";
-        }
-        return null;
-    }
-
-    private static String buildRequestExitCode(String workload) {
-        String paramsExpr = "this.queryToMap(((com.sun.net.httpserver.HttpExchange)$1).getRequestURI().getRawQuery())";
-        StringBuilder code = new StringBuilder();
-        code.append("java.util.Map params = ").append(paramsExpr).append(";");
-        code.append(MetricsTool.class.getName()).append(".onRequestExit(\"").append(workload).append("\", params);");
-        return code.toString();
-    }
-
-    public static void onRequestExit(String workload, Map<String, String> params) {
+    public static void logMetrics() {
         Map<String, Long> metrics = getMetrics();
         System.out.println(String.format("[Metrics] Thread=%s, Blocks=%d, Insts=%d, Loops=%d",
                 Thread.currentThread().getId(),
                 metrics.get("basicBlocks"),
                 metrics.get("instructions"),
                 metrics.get("loopIterations")));
-        pt.ulisboa.tecnico.cnv.mss.DynamoDbMetricsStore.store(workload, params, metrics);
-        cleanup();
     }
 }
