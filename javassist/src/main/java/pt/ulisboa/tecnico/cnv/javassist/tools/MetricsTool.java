@@ -57,9 +57,9 @@ public class MetricsTool extends AbstractJavassistTool {
     protected void transform(CtBehavior behavior) throws Exception {
         String className = behavior.getDeclaringClass().getName();
         String workload = workloadForClass(className);
-        if (workload != null && (isHttpHandlerMethod(behavior) || isLambdaHandlerMethod(behavior))) {
+        if (workload != null && isHttpHandlerMethod(behavior)) {
             behavior.insertBefore(String.format("%s.reset();", MetricsTool.class.getName()));
-            behavior.insertAfter(buildRequestExitCode(workload, isHttpHandlerMethod(behavior)), true);
+            behavior.insertAfter(buildRequestExitCode(workload), true);
             super.transform(behavior);
             return;
         }
@@ -120,14 +120,6 @@ public class MetricsTool extends AbstractJavassistTool {
         return params.length == 1 && "com.sun.net.httpserver.HttpExchange".equals(params[0].getName());
     }
 
-    private static boolean isLambdaHandlerMethod(CtBehavior behavior) throws Exception {
-        if (!"handleRequest".equals(behavior.getName())) {
-            return false;
-        }
-        CtClass[] params = behavior.getParameterTypes();
-        return params.length == 2 && "java.util.Map".equals(params[0].getName());
-    }
-
     private static String workloadForClass(String className) {
         if ("pt.ulisboa.tecnico.cnv.dna.DnaHandler".equals(className)) {
             return "dna";
@@ -141,11 +133,8 @@ public class MetricsTool extends AbstractJavassistTool {
         return null;
     }
 
-    private static String buildRequestExitCode(String workload, boolean isHttpHandler) {
-        String paramsExpr = isHttpHandler
-                ? "this.queryToMap(((com.sun.net.httpserver.HttpExchange)$1).getRequestURI().getRawQuery())"
-                : "(java.util.Map)$1";
-
+    private static String buildRequestExitCode(String workload) {
+        String paramsExpr = "this.queryToMap(((com.sun.net.httpserver.HttpExchange)$1).getRequestURI().getRawQuery())";
         StringBuilder code = new StringBuilder();
         code.append("java.util.Map params = ").append(paramsExpr).append(";");
         code.append(MetricsTool.class.getName()).append(".onRequestExit(\"").append(workload).append("\", params);");
