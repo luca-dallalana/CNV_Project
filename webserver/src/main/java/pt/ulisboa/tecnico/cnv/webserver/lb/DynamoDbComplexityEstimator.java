@@ -62,27 +62,50 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
             System.out.println("[LB] MSS read failed for workload=" + workload + ": " + e.getMessage());
         }
 
+        long predictedLoops = predictLoops(workload, params);
+
         if (!sameBucket.isEmpty()) {
-            return median(sameBucket);
+            return median(sameBucket) + predictedLoops;
         }
         if (!sameWorkload.isEmpty()) {
-            return median(sameWorkload);
+            return median(sameWorkload) + predictedLoops;
         }
+
         return heuristic(workload, params);
     }
 
-    private static long complexityFromItem(Map<String, AttributeValue> item) {
-        long instructions = parseLong(item.get("instructions"));
-        long loops = parseLong(item.get("loopIterations"));
-        long basicBlocks = parseLong(item.get("basicBlocks"));
+    private static long predictLoops(String workload, Map<String, String> params) {
+        try {
+            switch (workload) {
+                case "fractals": {
+                    long w = parsePositive(params.get("w"));
+                    long h = parsePositive(params.get("h"));
+                    long it = parsePositive(params.get("iterations"));
+                    return (w * h * it) / 2L; // Estimar que precisamos apenas de metade das iteracoes (por causa do escape)
+                }
+                case "grayscott": {
+                    long size = parsePositive(params.get("size"));
+                    long maxIterations = parsePositive(params.get("maxIterations"));
+                    return size * size * maxIterations;
+                }
+                case "dna": {
+                    long seq1 = sequenceLength(params.get("seq1"));
+                    long seq2 = sequenceLength(params.get("seq2"));
+                    return (seq1 * seq2) / 10L; // Estimar que apenas 10% tenha match 
+                }
+                default:
+                    return 0L;
+            }
+        } catch (IllegalArgumentException e) {
+            return 0L;
+        }
+    }
 
-        if (instructions > 0L) {
-            return instructions + (loops * 10L);
-        }
-        if (loops > 0L) {
-            return loops * 100L;
-        }
-        return basicBlocks * 50L;
+    private static long complexityFromItem(Map<String, AttributeValue> item) {
+        long branches = parseLong(item.get("branches"));
+        long methodCalls = parseLong(item.get("methodCalls"));
+
+        return branches + (methodCalls * 1L); // Trocar 1L depois dos tests 
     }
 
     private static Map<String, String> extractParams(Map<String, AttributeValue> item) {
@@ -125,65 +148,52 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
     }
 
     private static String bucketFor(String workload, Map<String, String> params) {
-        if ("fractals".equals(workload)) {
-            long w = parsePositive(params.get("w"), 800L);
-            long h = parsePositive(params.get("h"), 600L);
-            long it = parsePositive(params.get("iterations"), 100L);
-            return "px=" + bucketByMagnitude(w * h) + ",it=" + bucketByMagnitude(it);
+        try {
+            if ("fractals".equals(workload)) {
+                long w = parsePositive(params.get("w"));
+                long h = parsePositive(params.get("h"));
+                long it = parsePositive(params.get("iterations"));
+                return "px=" + bucketByMagnitude(w * h) + ",it=" + bucketByMagnitude(it);
+            }
+            if ("grayscott".equals(workload)) {
+                long size = parsePositive(params.get("size"));
+                long maxIterations = parsePositive(params.get("maxIterations"));
+                return "cell=" + bucketByMagnitude(size * size) + ",it=" + bucketByMagnitude(maxIterations);
+            }
+            if ("dna".equals(workload)) {
+                long seq1 = sequenceLength(params.get("seq1"));
+                long seq2 = sequenceLength(params.get("seq2"));
+                long minLength = parsePositive(params.get("minLength"));
+                return "cmp=" + bucketByMagnitude(seq1 * seq2) + ",min=" + bucketByMagnitude(minLength);
+            }
+            return "generic";
+        } catch (IllegalArgumentException e) {
+            return "generic";
         }
-        if ("grayscott".equals(workload)) {
-            long size = parsePositive(params.get("size"), 256L);
-            long maxIterations = parsePositive(params.get("maxIterations"), 5000L);
-            return "cell=" + bucketByMagnitude(size * size) + ",it=" + bucketByMagnitude(maxIterations);
-        }
-        if ("dna".equals(workload)) {
-            long seq1 = sequenceLength(params.get("seq1"));
-            long seq2 = sequenceLength(params.get("seq2"));
-            long minLength = parsePositive(params.get("minLength"), 1L);
-            return "cmp=" + bucketByMagnitude(seq1 * seq2) + ",min=" + bucketByMagnitude(minLength);
-        }
-        return "generic";
     }
 
     private static long heuristic(String workload, Map<String, String> params) {
-        if ("fractals".equals(workload)) {
-            long w = parsePositive(params.get("w"), 800L);
-            long h = parsePositive(params.get("h"), 600L);
-            long it = parsePositive(params.get("iterations"), 100L);
-            return Math.max(1L, w * h * it);
-        }
-        if ("grayscott".equals(workload)) {
-            long size = parsePositive(params.get("size"), 256L);
-            long maxIterations = parsePositive(params.get("maxIterations"), 5000L);
-            return Math.max(1L, size * size * maxIterations);
-        }
-        if ("dna".equals(workload)) {
-            long seq1 = sequenceLength(params.get("seq1"));
-            long seq2 = sequenceLength(params.get("seq2"));
-            long minLength = parsePositive(params.get("minLength"), 1L);
-            return Math.max(1L, seq1 * seq2 * minLength);
-        }
-        return 100000L;
+        return predictLoops(workload, params);
     }
 
     private static long sequenceLength(String value) {
         if (value == null || value.isBlank()) {
-            return 4L;
+            throw new IllegalArgumentException("Sequence parameter is required");
         }
         int idx = value.indexOf(':');
         String seq = idx >= 0 ? value.substring(idx + 1) : value;
         return Math.max(1L, seq.length());
     }
 
-    private static long parsePositive(String value, long fallback) {
+    private static long parsePositive(String value) {
         if (value == null || value.isBlank()) {
-            return fallback;
+            throw new IllegalArgumentException("Parameter value is required");
         }
         try {
             long parsed = Long.parseLong(value.trim());
             return Math.max(1L, parsed);
         } catch (NumberFormatException e) {
-            return fallback;
+            throw new IllegalArgumentException("Invalid parameter value: " + value, e);
         }
     }
 
