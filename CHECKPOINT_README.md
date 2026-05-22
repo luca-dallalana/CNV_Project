@@ -148,7 +148,7 @@ Attributes:
 ## Key Design Decisions
 
 ### 1. Branch Instrumentation
-**Rationale:** Branch targets represent control flow convergence points, providing sufficient granularity for complexity estimation while drastically reducing instrumentation overhead.
+**Rationale:** Branch targets represent control flow convergence points, providing sufficient granularity for complexity estimation while reducing instrumentation overhead.
 
 ### 2. Parameter-Based Loop Prediction
 **Rationale:** Workload loop counts are mathematically predictable from input parameters. This eliminates the need for expensive runtime loop counting.
@@ -222,50 +222,9 @@ watch -n 5 'aws ec2 describe-instances --filters "Name=tag:cnv-role,Values=worke
 
 ---
 
-## Source Code Structure
-
-```
-cnv26-g09/
-├── javassist/                          # Instrumentation tool
-│   └── src/main/java/pt/ulisboa/tecnico/cnv/
-│       ├── javassist/tools/
-│       │   └── MetricsTool.java       # NEW: Branch & method instrumentation
-│       └── mss/
-│           └── DynamoDbMetricsStore.java  # NEW: DynamoDB schema
-│
-├── webserver/                          # Load Balancer & Worker
-│   └── src/main/java/pt/ulisboa/tecnico/cnv/webserver/
-│       ├── WebServer.java             # LB entrypoint
-│       ├── WorkerWebServer.java       # Worker entrypoint
-│       ├── handlers/
-│       │   ├── FractalsHandler.java   # Workload handlers with metrics
-│       │   ├── GrayScottHandler.java
-│       │   └── DnaHandler.java
-│       └── lb/
-│           ├── DynamoDbComplexityEstimator.java  # NEW: Loop prediction
-│           ├── LoadBalancer.java
-│           ├── Autoscaler.java
-│           ├── LbConfig.java
-│           ├── Ec2WorkerDiscovery.java
-│           └── WorkerProxy.java
-│
-├── fractals/                           # Fractals workload
-├── grayscott/                          # GrayScott workload
-├── dna/                                # DNA workload
-│
-└── scripts/
-    ├── deploy-aws.sh                  # Full deployment automation
-    ├── cleanup-aws.sh                 # Resource cleanup
-    ├── start-worker.sh                # Local worker startup
-    └── start-lb.sh                    # Local LB startup
-```
-
----
-
 ## Authors
 
-Group 09 - CNV 2025/2026
-
-## Date
-
-May 21, 2026
+Group 09:
+- Inês Alves ist1107157;
+- Diogo Rodrigues ist1106147; 
+- Luca Dallalana ist1106378.
