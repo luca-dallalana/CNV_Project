@@ -28,6 +28,7 @@ public final class LbConfig {
     private final String workerLaunchTemplateId;
     private final String workerLaunchTemplateVersion;
     private final List<String> staticWorkers;
+    private final Duration cacheRefreshInterval;
 
     private LbConfig(
             int listenPort,
@@ -48,7 +49,8 @@ public final class LbConfig {
             Duration scalerCooldown,
             String workerLaunchTemplateId,
             String workerLaunchTemplateVersion,
-            List<String> staticWorkers) {
+            List<String> staticWorkers,
+            Duration cacheRefreshInterval) {
         this.listenPort = listenPort;
         this.workerPort = workerPort;
         this.workerProtocol = workerProtocol;
@@ -68,6 +70,7 @@ public final class LbConfig {
         this.workerLaunchTemplateId = workerLaunchTemplateId;
         this.workerLaunchTemplateVersion = workerLaunchTemplateVersion;
         this.staticWorkers = staticWorkers;
+        this.cacheRefreshInterval = cacheRefreshInterval;
     }
 
     public static LbConfig fromEnv() {
@@ -102,7 +105,8 @@ public final class LbConfig {
                 Duration.ofMillis(envInt("LB_SCALER_COOLDOWN_MS", 60000)),
                 launchTemplateId,
                 launchTemplateVersion,
-                parseStaticWorkers(envString("LB_STATIC_WORKERS", "")));
+                parseStaticWorkers(envString("LB_STATIC_WORKERS", "")),
+                Duration.ofMillis(envInt("LB_CACHE_REFRESH_MS", 30000)));
     }
 
     private static List<String> parseStaticWorkers(String raw) {
@@ -227,5 +231,9 @@ public final class LbConfig {
 
     public boolean hasLaunchTemplate() {
         return workerLaunchTemplateId != null && !workerLaunchTemplateId.isBlank();
+    }
+
+    public Duration getCacheRefreshInterval() {
+        return cacheRefreshInterval;
     }
 }
