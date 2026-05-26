@@ -97,7 +97,8 @@ public final class LoadBalancerHandler implements HttpHandler {
     private static void copyHeaders(HttpExchange exchange, Map<String, List<String>> sourceHeaders) {
         for (Map.Entry<String, List<String>> entry : sourceHeaders.entrySet()) {
             String key = entry.getKey();
-            if (key == null || "Content-Length".equalsIgnoreCase(key) || "Transfer-Encoding".equalsIgnoreCase(key)) {
+            if (key == null || "Content-Length".equalsIgnoreCase(key) || "Transfer-Encoding".equalsIgnoreCase(key)
+                    || key.toLowerCase().startsWith("access-control-")) {
                 continue;
             }
             for (String value : entry.getValue()) {

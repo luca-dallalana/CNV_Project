@@ -116,7 +116,7 @@ Type=simple
 User=ec2-user
 WorkingDirectory=/home/ec2-user
 Environment="WORKER_PORT=8000"
-ExecStart=/usr/bin/java -cp /home/ec2-user/webserver.jar -Xbootclasspath/a:/home/ec2-user/javassist.jar -javaagent:/home/ec2-user/webserver.jar=MetricsTool:pt.ulisboa.tecnico.cnv.fractals,pt.ulisboa.tecnico.cnv.grayscott,pt.ulisboa.tecnico.cnv.dna:output pt.ulisboa.tecnico.cnv.webserver.WorkerWebServer
+ExecStart=/usr/bin/java -javaagent:/home/ec2-user/javassist.jar=MetricsTool:pt.ulisboa.tecnico.cnv.fractals,pt.ulisboa.tecnico.cnv.grayscott,pt.ulisboa.tecnico.cnv.dna:output -cp /home/ec2-user/webserver.jar pt.ulisboa.tecnico.cnv.webserver.WorkerWebServer
 Restart=always
 RestartSec=10
 
