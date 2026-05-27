@@ -60,6 +60,14 @@
           <groupId>software.amazon.awssdk</groupId>
           <artifactId>auth</artifactId>
       </dependency>
+      <dependency>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>lambda</artifactId>
+      </dependency>
+      <dependency>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>cloudwatch</artifactId>
+      </dependency>
   </dependencies>
 
   <build>

@@ -16,6 +16,7 @@ public final class LoadBalancerHandler implements HttpHandler {
     private final RequestScheduler scheduler;
     private final ComplexityEstimator complexityEstimator;
     private final WorkerHttpClient workerHttpClient;
+    private final LambdaInvoker lambdaInvoker;
     private final LbConfig config;
 
     public LoadBalancerHandler(
@@ -23,11 +24,13 @@ public final class LoadBalancerHandler implements HttpHandler {
             RequestScheduler scheduler,
             ComplexityEstimator complexityEstimator,
             WorkerHttpClient workerHttpClient,
+            LambdaInvoker lambdaInvoker,
             LbConfig config) {
         this.workload = workload;
         this.scheduler = scheduler;
         this.complexityEstimator = complexityEstimator;
         this.workerHttpClient = workerHttpClient;
+        this.lambdaInvoker = lambdaInvoker;
         this.config = config;
     }
 
@@ -49,6 +52,20 @@ public final class LoadBalancerHandler implements HttpHandler {
         Map<String, String> params = QueryParams.parse(query);
         long predictedComplexity = complexityEstimator.estimate(workload, params);
         System.out.println(String.format("[LB] Request: workload=%s, complexity=%d", workload, predictedComplexity));
+
+        String lambdaFunction = config.getLambdaFunctionName(workload);
+        if (lambdaInvoker != null && lambdaFunction != null && scheduler.shouldUseLambda(predictedComplexity)) {
+            System.out.println(String.format("[LB] Routing to Lambda: function=%s", lambdaFunction));
+            try {
+                String result = lambdaInvoker.invoke(lambdaFunction, params);
+                writeText(exchange, 200, result);
+                System.out.println("[LB] Lambda invocation succeeded.");
+                return;
+            } catch (IOException e) {
+                System.out.println("[LB] Lambda failed, falling back to workers: " + e.getMessage());
+            }
+        }
+
         int maxAttempts = Math.max(1, config.getRequestRetryCount() + 1);
         Set<String> excluded = new HashSet<>();
         IOException lastFailure = null;

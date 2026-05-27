@@ -29,6 +29,14 @@ public final class LbConfig {
     private final String workerLaunchTemplateVersion;
     private final List<String> staticWorkers;
     private final Duration cacheRefreshInterval;
+    private final boolean lambdaEnabled;
+    private final String lambdaFunctionFractals;
+    private final String lambdaFunctionDna;
+    private final String lambdaFunctionGrayscott;
+    private final long lambdaComplexityThreshold;
+    private final long lambdaPressureThreshold;
+    private final double cpuScaleOutThreshold;
+    private final double cpuScaleInThreshold;
 
     private LbConfig(
             int listenPort,
@@ -50,7 +58,15 @@ public final class LbConfig {
             String workerLaunchTemplateId,
             String workerLaunchTemplateVersion,
             List<String> staticWorkers,
-            Duration cacheRefreshInterval) {
+            Duration cacheRefreshInterval,
+            boolean lambdaEnabled,
+            String lambdaFunctionFractals,
+            String lambdaFunctionDna,
+            String lambdaFunctionGrayscott,
+            long lambdaComplexityThreshold,
+            long lambdaPressureThreshold,
+            double cpuScaleOutThreshold,
+            double cpuScaleInThreshold) {
         this.listenPort = listenPort;
         this.workerPort = workerPort;
         this.workerProtocol = workerProtocol;
@@ -71,6 +87,14 @@ public final class LbConfig {
         this.workerLaunchTemplateVersion = workerLaunchTemplateVersion;
         this.staticWorkers = staticWorkers;
         this.cacheRefreshInterval = cacheRefreshInterval;
+        this.lambdaEnabled = lambdaEnabled;
+        this.lambdaFunctionFractals = lambdaFunctionFractals;
+        this.lambdaFunctionDna = lambdaFunctionDna;
+        this.lambdaFunctionGrayscott = lambdaFunctionGrayscott;
+        this.lambdaComplexityThreshold = lambdaComplexityThreshold;
+        this.lambdaPressureThreshold = lambdaPressureThreshold;
+        this.cpuScaleOutThreshold = cpuScaleOutThreshold;
+        this.cpuScaleInThreshold = cpuScaleInThreshold;
     }
 
     public static LbConfig fromEnv() {
@@ -86,6 +110,8 @@ public final class LbConfig {
         String regionRaw = envString("AWS_REGION", "us-east-1");
         Region region = Region.of(regionRaw);
 
+        long scaleOutPressure = envLong("LB_SCALE_OUT_PRESSURE", 30000000L);
+
         return new LbConfig(
                 envInt("LB_PORT", 8000),
                 envInt("LB_WORKER_PORT", 8000),
@@ -99,14 +125,22 @@ public final class LbConfig {
                 Duration.ofMillis(envInt("LB_FORWARD_TIMEOUT_MS", 15000)),
                 minWorkers,
                 maxWorkers,
-                envLong("LB_SCALE_OUT_PRESSURE", 30000000L),
+                scaleOutPressure,
                 envLong("LB_SCALE_IN_PRESSURE", 8000000L),
                 Duration.ofMillis(envInt("LB_SCALER_PERIOD_MS", 10000)),
                 Duration.ofMillis(envInt("LB_SCALER_COOLDOWN_MS", 60000)),
                 launchTemplateId,
                 launchTemplateVersion,
                 parseStaticWorkers(envString("LB_STATIC_WORKERS", "")),
-                Duration.ofMillis(envInt("LB_CACHE_REFRESH_MS", 30000)));
+                Duration.ofMillis(envInt("LB_CACHE_REFRESH_MS", 30000)),
+                envBoolean("LB_LAMBDA_ENABLED", false),
+                envString("LB_LAMBDA_FUNCTION_FRACTALS", ""),
+                envString("LB_LAMBDA_FUNCTION_DNA", ""),
+                envString("LB_LAMBDA_FUNCTION_GRAYSCOTT", ""),
+                envLong("LB_LAMBDA_COMPLEXITY_THRESHOLD", 1000000L),
+                envLong("LB_LAMBDA_PRESSURE_THRESHOLD", scaleOutPressure),
+                envDouble("LB_CPU_SCALE_OUT_THRESHOLD", 60.0),
+                envDouble("LB_CPU_SCALE_IN_THRESHOLD", 20.0));
     }
 
     private static List<String> parseStaticWorkers(String raw) {
@@ -146,6 +180,22 @@ public final class LbConfig {
             return fallback;
         }
         return Long.parseLong(value.trim());
+    }
+
+    private static double envDouble(String name, double fallback) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return Double.parseDouble(value.trim());
+    }
+
+    private static boolean envBoolean(String name, boolean fallback) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return Boolean.parseBoolean(value.trim());
     }
 
     public int getListenPort() {
@@ -235,5 +285,34 @@ public final class LbConfig {
 
     public Duration getCacheRefreshInterval() {
         return cacheRefreshInterval;
+    }
+
+    public boolean isLambdaEnabled() {
+        return lambdaEnabled;
+    }
+
+    public String getLambdaFunctionName(String workload) {
+        switch (workload) {
+            case "fractals": return lambdaFunctionFractals.isBlank() ? null : lambdaFunctionFractals;
+            case "dna":      return lambdaFunctionDna.isBlank() ? null : lambdaFunctionDna;
+            case "grayscott": return lambdaFunctionGrayscott.isBlank() ? null : lambdaFunctionGrayscott;
+            default: return null;
+        }
+    }
+
+    public long getLambdaComplexityThreshold() {
+        return lambdaComplexityThreshold;
+    }
+
+    public long getLambdaPressureThreshold() {
+        return lambdaPressureThreshold;
+    }
+
+    public double getCpuScaleOutThreshold() {
+        return cpuScaleOutThreshold;
+    }
+
+    public double getCpuScaleInThreshold() {
+        return cpuScaleInThreshold;
     }
 }
