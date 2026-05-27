@@ -65,14 +65,14 @@ public class DnaHandler implements HttpHandler, RequestHandler<Map<String, Strin
             int minLength = Integer.parseInt(minLengthParam);
             boolean stopOnFirst = Boolean.parseBoolean(stopOnFirstParam);
 
-            // Reset metrics and execute workload
             MetricsTool.reset();
+            long startTime = System.currentTimeMillis();
             String response = handleWorkload(seq1Param, seq2Param, minLength, stopOnFirst);
+            long executionTimeMs = System.currentTimeMillis() - startTime;
 
-            // Collect and store metrics
             Map<String, Long> metrics = MetricsTool.getMetrics();
             MetricsTool.logMetrics();
-            DynamoDbMetricsStore.store("dna", parameters, metrics);
+            DynamoDbMetricsStore.store("dna", parameters, metrics, executionTimeMs);
             MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.getBytes().length);

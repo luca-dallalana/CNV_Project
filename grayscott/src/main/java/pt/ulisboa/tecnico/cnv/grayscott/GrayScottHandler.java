@@ -66,14 +66,14 @@ public class GrayScottHandler implements HttpHandler, RequestHandler<Map<String,
             boolean stopOnExtinction = Boolean.parseBoolean(parameters.getOrDefault("stopOnExtinction", "false"));
             String seedMode = parameters.getOrDefault("seedMode", "center");
 
-            // Reset metrics and execute workload
             MetricsTool.reset();
+            long startTime = System.currentTimeMillis();
             String response = handleWorkload(size, maxIterations, F, K, stopOnExtinction, seedMode);
+            long executionTimeMs = System.currentTimeMillis() - startTime;
 
-            // Collect and store metrics
             Map<String, Long> metrics = MetricsTool.getMetrics();
             MetricsTool.logMetrics();
-            DynamoDbMetricsStore.store("grayscott", parameters, metrics);
+            DynamoDbMetricsStore.store("grayscott", parameters, metrics, executionTimeMs);
             MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.length());

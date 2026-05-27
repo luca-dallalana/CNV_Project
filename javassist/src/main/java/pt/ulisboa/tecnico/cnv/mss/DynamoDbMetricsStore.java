@@ -31,7 +31,7 @@ public final class DynamoDbMetricsStore {
     private DynamoDbMetricsStore() {
     }
 
-    public static void store(String workload, Map<String, String> params, Map<String, Long> metrics) {
+    public static void store(String workload, Map<String, String> params, Map<String, Long> metrics, long executionTimeMs) {
         String tableName = tableName();
         Region region = awsRegion();
 
@@ -50,6 +50,7 @@ public final class DynamoDbMetricsStore {
             item.put("timestamp", AttributeValue.builder().n(Long.toString(System.currentTimeMillis())).build());
             item.put("branches", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("branches", 0L))).build());
             item.put("methodCalls", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("methodCalls", 0L))).build());
+            item.put("executionTimeMs", AttributeValue.builder().n(Long.toString(executionTimeMs)).build());
 
             if (params != null && !params.isEmpty()) {
                 Map<String, AttributeValue> paramValues = new HashMap<>();

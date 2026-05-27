@@ -62,14 +62,14 @@ public class FractalsHandler implements HttpHandler, RequestHandler<Map<String, 
             int height = Integer.parseInt(parameters.getOrDefault("h", "600"));
             int iterations = Integer.parseInt(parameters.getOrDefault("iterations", "100"));
 
-            // Reset metrics and execute workload
             MetricsTool.reset();
+            long startTime = System.currentTimeMillis();
             String response = handleWorkload(width, height, iterations);
+            long executionTimeMs = System.currentTimeMillis() - startTime;
 
-            // Collect and store metrics
             Map<String, Long> metrics = MetricsTool.getMetrics();
             MetricsTool.logMetrics();
-            DynamoDbMetricsStore.store("fractals", parameters, metrics);
+            DynamoDbMetricsStore.store("fractals", parameters, metrics, executionTimeMs);
             MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.length());
