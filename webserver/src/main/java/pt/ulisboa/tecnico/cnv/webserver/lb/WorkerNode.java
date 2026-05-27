@@ -9,6 +9,7 @@ public final class WorkerNode {
     private final int port;
     private final AtomicInteger inflightRequests = new AtomicInteger(0);
     private final AtomicLong estimatedQueuedWork = new AtomicLong(0L);
+    private volatile boolean draining = false;
 
     public WorkerNode(String instanceId, String host, int port) {
         this.instanceId = instanceId;
@@ -50,6 +51,14 @@ public final class WorkerNode {
         if (updated < 0L) {
             estimatedQueuedWork.set(0L);
         }
+    }
+
+    public boolean isDraining() {
+        return draining;
+    }
+
+    public void setDraining(boolean draining) {
+        this.draining = draining;
     }
 
     public String endpointBaseUrl(String protocol) {

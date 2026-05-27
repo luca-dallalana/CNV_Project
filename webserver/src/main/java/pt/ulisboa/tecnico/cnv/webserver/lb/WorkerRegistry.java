@@ -39,10 +39,21 @@ public final class WorkerRegistry {
         return nodes.size();
     }
 
+    public int activeWorkerCount() {
+        int count = 0;
+        for (WorkerNode node : nodes.values()) {
+            if (!node.isDraining()) count++;
+        }
+        return count;
+    }
+
     public WorkerNode chooseIdleTerminationCandidate() {
         WorkerNode candidate = null;
         long minQueuedWork = Long.MAX_VALUE;
         for (WorkerNode node : nodes.values()) {
+            if (node.isDraining()) {
+                continue;
+            }
             if (node.getInflightRequests() > 0 || node.getEstimatedQueuedWork() > 0) {
                 continue;
             }
