@@ -48,13 +48,18 @@ public class WebServer {
         server.createContext("/fractals", new LoadBalancerHandler("fractals", scheduler, complexityEstimator, workerHttpClient, lambdaInvoker, config));
         server.createContext("/dna", new LoadBalancerHandler("dna", scheduler, complexityEstimator, workerHttpClient, lambdaInvoker, config));
         server.createContext("/grayscott", new LoadBalancerHandler("grayscott", scheduler, complexityEstimator, workerHttpClient, lambdaInvoker, config));
+        server.createContext("/test", exchange -> {
+            int status = workerRegistry.activeWorkerCount() > 0 ? 200 : 503;
+            exchange.sendResponseHeaders(status, 0);
+            exchange.getResponseBody().close();
+        });
 
         CloudWatchMetricsPoller cpuPoller = null;
         if (!config.usesStaticWorkers()) {
             cpuPoller = new CloudWatchMetricsPoller(config);
         }
 
-        AutoScaler autoScaler = new AutoScaler(config, workerDiscovery, workerRegistry, ec2Discovery, cpuPoller);
+        AutoScaler autoScaler = new AutoScaler(config, workerDiscovery, workerRegistry, ec2Discovery, cpuPoller, workerHttpClient);
         autoScaler.start();
 
         final Ec2WorkerDiscovery finalEc2Discovery = ec2Discovery;

@@ -22,6 +22,10 @@ public class WorkerWebServer {
         server.createContext("/fractals", new FractalsHandler());
         server.createContext("/dna", new DnaHandler());
         server.createContext("/grayscott", new GrayScottHandler());
+        server.createContext("/test", exchange -> {
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().close();
+        });
         server.start();
         System.out.println("[Worker] WebServer started on port " + port + ".");
     }

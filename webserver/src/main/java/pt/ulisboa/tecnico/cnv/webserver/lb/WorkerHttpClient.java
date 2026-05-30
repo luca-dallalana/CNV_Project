@@ -39,6 +39,21 @@ public final class WorkerHttpClient {
         return new ForwardResult(statusCode, headers, body);
     }
 
+    public boolean probe(WorkerNode worker) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(
+                    worker.endpointBaseUrl(config.getWorkerProtocol()) + "/test").openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            int status = conn.getResponseCode();
+            conn.disconnect();
+            return status >= 200 && status < 300;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     private static String readAll(InputStream stream) throws IOException {
         if (stream == null) {
             return "";

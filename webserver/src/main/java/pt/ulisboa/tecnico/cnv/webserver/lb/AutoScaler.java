@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.cnv.webserver.lb;
 
 import java.util.List;
 import java.util.OptionalDouble;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +14,7 @@ public final class AutoScaler {
     private final WorkerRegistry workerRegistry;
     private final Ec2WorkerDiscovery ec2Discovery;
     private final CloudWatchMetricsPoller cpuPoller;
+    private final WorkerHttpClient workerHttpClient;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile long lastScalingActionAt = 0L;
     private static final int SUSTAINED_TICKS = 3;
@@ -25,12 +27,14 @@ public final class AutoScaler {
             WorkerDiscovery workerDiscovery,
             WorkerRegistry workerRegistry,
             Ec2WorkerDiscovery ec2Discovery,
-            CloudWatchMetricsPoller cpuPoller) {
+            CloudWatchMetricsPoller cpuPoller,
+            WorkerHttpClient workerHttpClient) {
         this.config = config;
         this.workerDiscovery = workerDiscovery;
         this.workerRegistry = workerRegistry;
         this.ec2Discovery = ec2Discovery;
         this.cpuPoller = cpuPoller;
+        this.workerHttpClient = workerHttpClient;
     }
 
     public void start() {
@@ -45,7 +49,13 @@ public final class AutoScaler {
     private void tick() {
         try {
             List<WorkerNode> discoveredWorkers = workerDiscovery.discoverWorkers();
-            workerRegistry.refresh(discoveredWorkers);
+            Set<String> existingIds = workerRegistry.allNodes().stream()
+                    .map(WorkerNode::getInstanceId)
+                    .collect(Collectors.toSet());
+            List<WorkerNode> readyWorkers = discoveredWorkers.stream()
+                    .filter(w -> existingIds.contains(w.getInstanceId()) || workerHttpClient.probe(w))
+                    .collect(Collectors.toList());
+            workerRegistry.refresh(readyWorkers);
 
             if (config.usesStaticWorkers() || ec2Discovery == null) {
                 return;
