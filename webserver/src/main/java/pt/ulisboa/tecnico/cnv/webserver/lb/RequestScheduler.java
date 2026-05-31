@@ -59,7 +59,8 @@ public final class RequestScheduler {
     public boolean shouldUseLambda(long complexity) {
         if (!config.isLambdaEnabled()) return false;
         if (complexity > config.getLambdaComplexityThreshold()) return false;
-        int activeCount = Math.max(1, workerRegistry.activeWorkerCount());
+        int activeCount = workerRegistry.activeWorkerCount();
+        if (activeCount == 0) return true;
         long pressure = workerRegistry.totalQueuedWork() / activeCount;
         return pressure >= config.getLambdaPressureThreshold();
     }

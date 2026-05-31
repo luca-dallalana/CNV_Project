@@ -77,6 +77,17 @@ public final class LoadBalancerHandler implements HttpHandler {
                     worker.getInstanceId(), worker.getEstimatedQueuedWork(), worker.getInflightRequests()));
             }
             if (worker == null) {
+                if (lambdaInvoker != null && lambdaFunction != null
+                        && predictedComplexity <= config.getLambdaComplexityThreshold()) {
+                    System.out.println("[LB] All workers saturated, falling back to Lambda: " + lambdaFunction);
+                    try {
+                        String result = lambdaInvoker.invoke(lambdaFunction, params);
+                        writeText(exchange, 200, result);
+                        return;
+                    } catch (IOException e) {
+                        System.out.println("[LB] Lambda fallback failed: " + e.getMessage());
+                    }
+                }
                 writeText(exchange, 503, "No healthy workers available.");
                 return;
             }
