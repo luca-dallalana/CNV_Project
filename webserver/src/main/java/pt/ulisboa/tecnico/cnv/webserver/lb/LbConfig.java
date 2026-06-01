@@ -16,7 +16,6 @@ public final class LbConfig {
     private final String workerTagValue;
     private final Region awsRegion;
     private final String metricsTableName;
-    private final int metricsSampleSize;
     private final int requestRetryCount;
     private final Duration forwardTimeout;
     private final int minWorkers;
@@ -46,7 +45,6 @@ public final class LbConfig {
             String workerTagValue,
             Region awsRegion,
             String metricsTableName,
-            int metricsSampleSize,
             int requestRetryCount,
             Duration forwardTimeout,
             int minWorkers,
@@ -74,7 +72,6 @@ public final class LbConfig {
         this.workerTagValue = workerTagValue;
         this.awsRegion = awsRegion;
         this.metricsTableName = metricsTableName;
-        this.metricsSampleSize = metricsSampleSize;
         this.requestRetryCount = requestRetryCount;
         this.forwardTimeout = forwardTimeout;
         this.minWorkers = minWorkers;
@@ -120,7 +117,6 @@ public final class LbConfig {
                 envString("LB_WORKER_TAG_VALUE", "worker"),
                 region,
                 envString("CNV_METRICS_TABLE", DEFAULT_METRICS_TABLE),
-                envInt("LB_MSS_SAMPLE_SIZE", 200),
                 envInt("LB_REQUEST_RETRY_COUNT", 1),
                 Duration.ofMillis(envInt("LB_FORWARD_TIMEOUT_MS", 15000)),
                 minWorkers,
@@ -225,10 +221,6 @@ public final class LbConfig {
 
     public String getMetricsTableName() {
         return metricsTableName;
-    }
-
-    public int getMetricsSampleSize() {
-        return metricsSampleSize;
     }
 
     public int getRequestRetryCount() {

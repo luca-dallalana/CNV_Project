@@ -72,7 +72,7 @@ public final class AutoScaler {
 
             int activeWorkers = workerRegistry.activeWorkerCount();
             if (activeWorkers <= 0) {
-                if (ec2Discovery != null && workerRegistry.workerCount() == 0) {
+                if (workerRegistry.workerCount() == 0) {
                     long now = System.currentTimeMillis();
                     if ((now - lastScalingActionAt) >= config.getScalerCooldown().toMillis()) {
                         System.out.println("[AS] No workers in registry — launching initial worker.");

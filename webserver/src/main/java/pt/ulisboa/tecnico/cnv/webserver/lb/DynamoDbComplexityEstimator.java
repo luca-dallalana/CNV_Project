@@ -52,12 +52,12 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         long[] quantileMedians = workloadQuantileMedians.get(workload);
         if (boundaries != null && quantileMedians != null) {
             int q = findQuantile(driver, boundaries);
-            return quantileMedians[q] + driver;
+            return quantileMedians[q];
         }
 
         Long workloadMedian = workloadMedians.get(workload);
         if (workloadMedian != null) {
-            return workloadMedian + driver;
+            return workloadMedian;
         }
 
         return heuristic(workload, params);
