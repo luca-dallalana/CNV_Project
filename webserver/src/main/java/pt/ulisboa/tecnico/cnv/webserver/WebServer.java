@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.cnv.webserver;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.sun.net.httpserver.HttpServer;
 
@@ -34,12 +35,14 @@ public class WebServer {
             workerDiscovery = ec2Discovery;
         }
 
-        List<WorkerNode> initialWorkers = workerDiscovery.discoverWorkers();
+        WorkerHttpClient workerHttpClient = new WorkerHttpClient(config);
+        List<WorkerNode> initialWorkers = workerDiscovery.discoverWorkers().stream()
+                .filter(w -> workerHttpClient.probe(w))
+                .collect(Collectors.toList());
         workerRegistry.refresh(initialWorkers);
 
         final DynamoDbComplexityEstimator complexityEstimator = new DynamoDbComplexityEstimator(config);
         RequestScheduler scheduler = new RequestScheduler(workerRegistry, config);
-        WorkerHttpClient workerHttpClient = new WorkerHttpClient(config);
         LambdaInvoker lambdaInvoker = config.isLambdaEnabled() ? new LambdaInvoker(config) : null;
 
         HttpServer server = HttpServer.create(new InetSocketAddress(config.getListenPort()), 0);

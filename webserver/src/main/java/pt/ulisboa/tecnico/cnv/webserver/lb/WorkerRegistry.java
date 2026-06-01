@@ -2,25 +2,22 @@ package pt.ulisboa.tecnico.cnv.webserver.lb;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class WorkerRegistry {
     private final Map<String, WorkerNode> nodes = new ConcurrentHashMap<>();
 
     public synchronized void refresh(List<WorkerNode> discoveredNodes) {
-        Map<String, WorkerNode> next = new ConcurrentHashMap<>();
+        Set<String> newIds = new HashSet<>();
         for (WorkerNode discovered : discoveredNodes) {
-            WorkerNode existing = nodes.get(discovered.getInstanceId());
-            if (existing != null) {
-                next.put(discovered.getInstanceId(), existing);
-                continue;
-            }
-            next.put(discovered.getInstanceId(), discovered);
+            newIds.add(discovered.getInstanceId());
+            nodes.putIfAbsent(discovered.getInstanceId(), discovered);
         }
-        nodes.clear();
-        nodes.putAll(next);
+        nodes.keySet().retainAll(newIds);
     }
 
     public List<WorkerNode> allNodes() {
