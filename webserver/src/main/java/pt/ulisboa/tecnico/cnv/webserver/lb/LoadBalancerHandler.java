@@ -92,6 +92,7 @@ public final class LoadBalancerHandler implements HttpHandler {
                 return;
             }
 
+            WorkerHttpClient.ForwardResult successResult = null;
             worker.registerScheduledRequest(predictedComplexity);
             try {
                 WorkerHttpClient.ForwardResult result = workerHttpClient.forward(worker, path, query);
@@ -101,11 +102,7 @@ public final class LoadBalancerHandler implements HttpHandler {
                     excluded.add(worker.getInstanceId());
                     lastError = "Worker " + worker.getInstanceId() + " returned " + result.getStatusCode();
                 } else {
-                    copyHeaders(exchange, result.getHeaders());
-                    writeText(exchange, result.getStatusCode(), result.getBody());
-                    System.out.println(String.format("[LB] Forwarded successfully to %s (status=%d)",
-                        worker.getInstanceId(), result.getStatusCode()));
-                    return;
+                    successResult = result;
                 }
             } catch (IOException e) {
                 System.out.println(String.format("[LB] Forward failed to %s: %s", worker.getInstanceId(), e.getMessage()));
@@ -113,6 +110,13 @@ public final class LoadBalancerHandler implements HttpHandler {
                 lastError = e.getMessage();
             } finally {
                 worker.completeScheduledRequest(predictedComplexity);
+            }
+            if (successResult != null) {
+                copyHeaders(exchange, successResult.getHeaders());
+                writeText(exchange, successResult.getStatusCode(), successResult.getBody());
+                System.out.println(String.format("[LB] Forwarded successfully to %s (status=%d)",
+                    worker.getInstanceId(), successResult.getStatusCode()));
+                return;
             }
         }
 

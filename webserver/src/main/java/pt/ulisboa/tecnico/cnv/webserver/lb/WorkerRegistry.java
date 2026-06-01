@@ -48,21 +48,11 @@ public final class WorkerRegistry {
     }
 
     public WorkerNode chooseIdleTerminationCandidate() {
-        WorkerNode candidate = null;
-        long minQueuedWork = Long.MAX_VALUE;
         for (WorkerNode node : nodes.values()) {
-            if (node.isDraining()) {
-                continue;
-            }
-            if (node.getInflightRequests() > 0 || node.getEstimatedQueuedWork() > 0) {
-                continue;
-            }
-            long queuedWork = node.getEstimatedQueuedWork();
-            if (candidate == null || queuedWork < minQueuedWork) {
-                candidate = node;
-                minQueuedWork = queuedWork;
-            }
+            if (node.isDraining()) continue;
+            if (node.getInflightRequests() > 0 || node.getEstimatedQueuedWork() > 0) continue;
+            return node;
         }
-        return candidate;
+        return null;
     }
 }

@@ -2,7 +2,6 @@ package pt.ulisboa.tecnico.cnv.webserver.lb;
 
 import java.util.List;
 import java.util.OptionalDouble;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -49,11 +48,8 @@ public final class AutoScaler {
     private void tick() {
         try {
             List<WorkerNode> discoveredWorkers = workerDiscovery.discoverWorkers();
-            Set<String> existingIds = workerRegistry.allNodes().stream()
-                    .map(WorkerNode::getInstanceId)
-                    .collect(Collectors.toSet());
             List<WorkerNode> readyWorkers = discoveredWorkers.stream()
-                    .filter(w -> existingIds.contains(w.getInstanceId()) || workerHttpClient.probe(w))
+                    .filter(w -> workerHttpClient.probe(w))
                     .collect(Collectors.toList());
             workerRegistry.refresh(readyWorkers);
 
@@ -76,6 +72,14 @@ public final class AutoScaler {
 
             int activeWorkers = workerRegistry.activeWorkerCount();
             if (activeWorkers <= 0) {
+                if (ec2Discovery != null && workerRegistry.workerCount() == 0) {
+                    long now = System.currentTimeMillis();
+                    if ((now - lastScalingActionAt) >= config.getScalerCooldown().toMillis()) {
+                        System.out.println("[AS] No workers in registry — launching initial worker.");
+                        ec2Discovery.scaleOutOne();
+                        lastScalingActionAt = now;
+                    }
+                }
                 return;
             }
 
