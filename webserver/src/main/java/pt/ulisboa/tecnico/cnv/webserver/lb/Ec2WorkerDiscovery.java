@@ -71,6 +71,7 @@ public final class Ec2WorkerDiscovery implements WorkerDiscovery {
         ec2Client.runInstances(r -> r
                 .launchTemplate(lt -> lt.launchTemplateId(config.getWorkerLaunchTemplateId())
                         .version(config.getWorkerLaunchTemplateVersion()))
+                .monitoring(m -> m.enabled(true))
                 .minCount(1)
                 .maxCount(1));
         System.out.println("[AS] Triggered scale-out by 1 instance.");

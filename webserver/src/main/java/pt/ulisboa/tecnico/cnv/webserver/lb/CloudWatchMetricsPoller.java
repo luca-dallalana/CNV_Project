@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.cnv.webserver.lb;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -16,6 +17,8 @@ import software.amazon.awssdk.services.cloudwatch.model.Statistic;
 public final class CloudWatchMetricsPoller {
     private final CloudWatchClient cloudWatch;
     private final LbConfig config;
+    private volatile Instant lastPollTime = Instant.EPOCH;
+    private volatile OptionalDouble cachedCpuAvg = OptionalDouble.empty();
 
     public CloudWatchMetricsPoller(LbConfig config) {
         this.config = config;
@@ -30,8 +33,12 @@ public final class CloudWatchMetricsPoller {
             return OptionalDouble.empty();
         }
 
+        if (Duration.between(lastPollTime, Instant.now()).getSeconds() < 60) {
+            return cachedCpuAvg;
+        }
+
         Instant endTime = Instant.now();
-        Instant startTime = endTime.minusSeconds(600);
+        Instant startTime = endTime.minusSeconds(120);
 
         double sum = 0.0;
         int count = 0;
@@ -45,7 +52,7 @@ public final class CloudWatchMetricsPoller {
                             .value(instanceId)
                             .build())
                     .statistics(Statistic.AVERAGE)
-                    .period(300)
+                    .period(60)
                     .startTime(startTime)
                     .endTime(endTime)
                     .build();
@@ -66,7 +73,10 @@ public final class CloudWatchMetricsPoller {
             }
         }
 
-        return count > 0 ? OptionalDouble.of(sum / count) : OptionalDouble.empty();
+        OptionalDouble result = count > 0 ? OptionalDouble.of(sum / count) : OptionalDouble.empty();
+        lastPollTime = Instant.now();
+        cachedCpuAvg = result;
+        return result;
     }
 
     public void close() {
