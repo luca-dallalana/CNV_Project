@@ -68,7 +68,7 @@ public final class LoadBalancerHandler implements HttpHandler {
 
         int maxAttempts = Math.max(1, config.getRequestRetryCount() + 1);
         Set<String> excluded = new HashSet<>();
-        IOException lastFailure = null;
+        String lastError = null;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             WorkerNode worker = scheduler.selectWorker(excluded, predictedComplexity);
@@ -95,25 +95,28 @@ public final class LoadBalancerHandler implements HttpHandler {
             worker.registerScheduledRequest(predictedComplexity);
             try {
                 WorkerHttpClient.ForwardResult result = workerHttpClient.forward(worker, path, query);
-                copyHeaders(exchange, result.getHeaders());
-                writeText(exchange, result.getStatusCode(), result.getBody());
-                System.out.println(String.format("[LB] Forwarded successfully to %s (status=%d)",
-                    worker.getInstanceId(), result.getStatusCode()));
-                return;
+                if (result.getStatusCode() >= 500) {
+                    System.out.println(String.format("[LB] Worker %s returned %d, retrying",
+                        worker.getInstanceId(), result.getStatusCode()));
+                    excluded.add(worker.getInstanceId());
+                    lastError = "Worker " + worker.getInstanceId() + " returned " + result.getStatusCode();
+                } else {
+                    copyHeaders(exchange, result.getHeaders());
+                    writeText(exchange, result.getStatusCode(), result.getBody());
+                    System.out.println(String.format("[LB] Forwarded successfully to %s (status=%d)",
+                        worker.getInstanceId(), result.getStatusCode()));
+                    return;
+                }
             } catch (IOException e) {
                 System.out.println(String.format("[LB] Forward failed to %s: %s", worker.getInstanceId(), e.getMessage()));
                 excluded.add(worker.getInstanceId());
-                lastFailure = e;
+                lastError = e.getMessage();
             } finally {
                 worker.completeScheduledRequest(predictedComplexity);
             }
         }
 
-        if (lastFailure == null) {
-            writeText(exchange, 502, "Request forwarding failed.");
-            return;
-        }
-        writeText(exchange, 502, "Request forwarding failed: " + lastFailure.getMessage());
+        writeText(exchange, 502, "Request forwarding failed: " + lastError);
     }
 
     private static void addCorsHeaders(HttpExchange exchange) {
