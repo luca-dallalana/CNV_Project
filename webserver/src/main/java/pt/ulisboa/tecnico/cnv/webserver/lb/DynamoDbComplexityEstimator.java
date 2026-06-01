@@ -16,10 +16,14 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 
 public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
+    private static final int NUM_QUANTILES = 5;
+    private static final int MIN_QUANTILE_SAMPLES = NUM_QUANTILES;
+
     private final LbConfig config;
     private final DynamoDbClient dynamoDbClient;
     private final ScheduledExecutorService refreshScheduler;
-    private volatile Map<String, Long> bucketMedians = Collections.emptyMap();
+    private volatile Map<String, long[]> workloadBoundaries = Collections.emptyMap();
+    private volatile Map<String, long[]> workloadQuantileMedians = Collections.emptyMap();
     private volatile Map<String, Long> workloadMedians = Collections.emptyMap();
 
     public DynamoDbComplexityEstimator(LbConfig config) {
@@ -42,17 +46,18 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
 
     @Override
     public long estimate(String workload, Map<String, String> params) {
-        String bucket = bucketFor(workload, params);
-        long predictedLoops = predictLoops(workload, params);
+        long driver = predictLoops(workload, params);
 
-        Long bucketMedian = bucketMedians.get(bucket);
-        if (bucketMedian != null) {
-            return bucketMedian + predictedLoops;
+        long[] boundaries = workloadBoundaries.get(workload);
+        long[] quantileMedians = workloadQuantileMedians.get(workload);
+        if (boundaries != null && quantileMedians != null) {
+            int q = findQuantile(driver, boundaries);
+            return quantileMedians[q] + driver;
         }
 
         Long workloadMedian = workloadMedians.get(workload);
         if (workloadMedian != null) {
-            return workloadMedian + predictedLoops;
+            return workloadMedian + driver;
         }
 
         return heuristic(workload, params);
@@ -60,7 +65,7 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
 
     private void refreshCache() {
         try {
-            Map<String, List<Long>> bucketSamples = new HashMap<>();
+            Map<String, List<long[]>> driverComplexityByWorkload = new HashMap<>();
             Map<String, List<Long>> workloadSamples = new HashMap<>();
 
             ScanRequest request = ScanRequest.builder()
@@ -78,24 +83,58 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
                     continue;
                 }
                 Map<String, String> itemParams = extractParams(item);
-                String bucket = bucketFor(workload, itemParams);
-                bucketSamples.computeIfAbsent(bucket, k -> new ArrayList<>()).add(complexity);
+                long driver = predictLoops(workload, itemParams);
+                driverComplexityByWorkload.computeIfAbsent(workload, k -> new ArrayList<>())
+                        .add(new long[]{driver, complexity});
                 workloadSamples.computeIfAbsent(workload, k -> new ArrayList<>()).add(complexity);
             }
 
-            Map<String, Long> newBucketMedians = new HashMap<>();
-            for (Map.Entry<String, List<Long>> entry : bucketSamples.entrySet()) {
-                newBucketMedians.put(entry.getKey(), median(entry.getValue()));
+            Map<String, long[]> newBoundaries = new HashMap<>();
+            Map<String, long[]> newQuantileMedians = new HashMap<>();
+
+            for (Map.Entry<String, List<long[]>> entry : driverComplexityByWorkload.entrySet()) {
+                String workload = entry.getKey();
+                List<long[]> pairs = entry.getValue();
+                if (pairs.size() < MIN_QUANTILE_SAMPLES) {
+                    continue;
+                }
+                pairs.sort((a, b) -> Long.compare(a[0], b[0]));
+                int n = pairs.size();
+
+                long[] boundaries = new long[NUM_QUANTILES - 1];
+                for (int i = 1; i < NUM_QUANTILES; i++) {
+                    int idx = (int) Math.round((double) i * n / NUM_QUANTILES) - 1;
+                    boundaries[i - 1] = pairs.get(Math.max(0, Math.min(n - 1, idx)))[0];
+                }
+
+                @SuppressWarnings("unchecked")
+                List<Long>[] bucketComplexities = new List[NUM_QUANTILES];
+                for (int i = 0; i < NUM_QUANTILES; i++) {
+                    bucketComplexities[i] = new ArrayList<>();
+                }
+                for (long[] pair : pairs) {
+                    bucketComplexities[findQuantile(pair[0], boundaries)].add(pair[1]);
+                }
+
+                long[] quantileMedians = new long[NUM_QUANTILES];
+                for (int i = 0; i < NUM_QUANTILES; i++) {
+                    quantileMedians[i] = bucketComplexities[i].isEmpty() ? 0L : median(bucketComplexities[i]);
+                }
+
+                newBoundaries.put(workload, boundaries);
+                newQuantileMedians.put(workload, quantileMedians);
             }
+
             Map<String, Long> newWorkloadMedians = new HashMap<>();
             for (Map.Entry<String, List<Long>> entry : workloadSamples.entrySet()) {
                 newWorkloadMedians.put(entry.getKey(), median(entry.getValue()));
             }
 
-            this.bucketMedians = Collections.unmodifiableMap(newBucketMedians);
+            this.workloadBoundaries = Collections.unmodifiableMap(newBoundaries);
+            this.workloadQuantileMedians = Collections.unmodifiableMap(newQuantileMedians);
             this.workloadMedians = Collections.unmodifiableMap(newWorkloadMedians);
-            System.out.println(String.format("[CACHE] Refreshed: %d buckets, %d workload types",
-                    newBucketMedians.size(), newWorkloadMedians.size()));
+            System.out.println(String.format("[CACHE] Refreshed: %d workloads with quantiles, %d workload medians",
+                    newBoundaries.size(), newWorkloadMedians.size()));
         } catch (Exception e) {
             System.out.println("[CACHE] Refresh failed: " + e.getMessage());
         }
@@ -174,29 +213,11 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         return (sorted.get((size / 2) - 1) + sorted.get(size / 2)) / 2L;
     }
 
-    private static String bucketFor(String workload, Map<String, String> params) {
-        try {
-            if ("fractals".equals(workload)) {
-                long w = parsePositive(params.get("w"));
-                long h = parsePositive(params.get("h"));
-                long it = parsePositive(params.get("iterations"));
-                return "px=" + bucketByMagnitude(w * h) + ",it=" + bucketByMagnitude(it);
-            }
-            if ("grayscott".equals(workload)) {
-                long size = parsePositive(params.get("size"));
-                long maxIterations = parsePositive(params.get("maxIterations"));
-                return "cell=" + bucketByMagnitude(size * size) + ",it=" + bucketByMagnitude(maxIterations);
-            }
-            if ("dna".equals(workload)) {
-                long seq1 = sequenceLength(params.get("seq1"));
-                long seq2 = sequenceLength(params.get("seq2"));
-                long minLength = parsePositive(params.get("minLength"));
-                return "cmp=" + bucketByMagnitude(seq1 * seq2) + ",min=" + bucketByMagnitude(minLength);
-            }
-            return "generic";
-        } catch (IllegalArgumentException e) {
-            return "generic";
+    private static int findQuantile(long value, long[] boundaries) {
+        for (int i = 0; i < boundaries.length; i++) {
+            if (value <= boundaries[i]) return i;
         }
+        return boundaries.length;
     }
 
     private static long heuristic(String workload, Map<String, String> params) {
@@ -224,12 +245,4 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         }
     }
 
-    private static long bucketByMagnitude(long value) {
-        long safe = Math.max(1L, value);
-        long bucket = 1L;
-        while (bucket * 10L <= safe) {
-            bucket *= 10L;
-        }
-        return bucket;
-    }
 }
