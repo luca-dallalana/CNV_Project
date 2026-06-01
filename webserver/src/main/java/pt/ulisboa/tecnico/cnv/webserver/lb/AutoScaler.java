@@ -20,6 +20,8 @@ public final class AutoScaler {
     // Only accessed from the single scheduler thread — no synchronization needed.
     private int highPressureTicks = 0;
     private int lowPressureTicks = 0;
+    private int pendingWorkerCount = 0;
+    private int prevActiveWorkerCount = 0;
 
     public AutoScaler(
             LbConfig config,
@@ -53,6 +55,11 @@ public final class AutoScaler {
                     .collect(Collectors.toList());
             workerRegistry.refresh(readyWorkers);
 
+            int currentActive = workerRegistry.activeWorkerCount();
+            int newWorkers = Math.max(0, currentActive - prevActiveWorkerCount);
+            pendingWorkerCount = Math.max(0, pendingWorkerCount - newWorkers);
+            prevActiveWorkerCount = currentActive;
+
             if (config.usesStaticWorkers() || ec2Discovery == null) {
                 return;
             }
@@ -72,18 +79,20 @@ public final class AutoScaler {
 
             int activeWorkers = workerRegistry.activeWorkerCount();
             if (activeWorkers <= 0) {
-                if (workerRegistry.workerCount() == 0) {
+                if (workerRegistry.workerCount() == 0 && pendingWorkerCount == 0) {
                     long now = System.currentTimeMillis();
                     if ((now - lastScalingActionAt) >= config.getScalerCooldown().toMillis()) {
                         System.out.println("[AS] No workers in registry — launching initial worker.");
                         ec2Discovery.scaleOutOne();
+                        pendingWorkerCount++;
                         lastScalingActionAt = now;
                     }
                 }
                 return;
             }
 
-            long pressure = workerRegistry.totalQueuedWork() / activeWorkers;
+            int effectiveWorkers = activeWorkers + pendingWorkerCount;
+            long pressure = workerRegistry.totalQueuedWork() / effectiveWorkers;
 
             List<String> activeIds = workerRegistry.allNodes().stream()
                     .filter(w -> !w.isDraining() && !w.getInstanceId().startsWith("static-"))
@@ -105,9 +114,6 @@ public final class AutoScaler {
             } else if (pressure < config.getScaleInPressure() && cpuLow) {
                 lowPressureTicks++;
                 highPressureTicks = 0;
-            } else {
-                highPressureTicks = 0;
-                lowPressureTicks = 0;
             }
 
             long now = System.currentTimeMillis();
@@ -115,9 +121,10 @@ public final class AutoScaler {
                 return;
             }
 
-            if (highPressureTicks >= SUSTAINED_TICKS && activeWorkers < config.getMaxWorkers()) {
-                System.out.println("[AS] Scale-out: sustained pressure=" + pressure + " ticks=" + highPressureTicks);
+            if (highPressureTicks >= SUSTAINED_TICKS && effectiveWorkers < config.getMaxWorkers()) {
+                System.out.println("[AS] Scale-out: sustained pressure=" + pressure + " ticks=" + highPressureTicks + " pending=" + pendingWorkerCount);
                 ec2Discovery.scaleOutOne();
+                pendingWorkerCount++;
                 lastScalingActionAt = now;
                 highPressureTicks = 0;
                 return;

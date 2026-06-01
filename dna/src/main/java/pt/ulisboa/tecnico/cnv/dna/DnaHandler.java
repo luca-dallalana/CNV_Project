@@ -72,7 +72,10 @@ public class DnaHandler implements HttpHandler, RequestHandler<Map<String, Strin
 
             Map<String, Long> metrics = MetricsTool.getMetrics();
             MetricsTool.logMetrics();
-            DynamoDbMetricsStore.store("dna", parameters, metrics, executionTimeMs);
+            Map<String, String> decodedParams = new HashMap<>(parameters);
+            decodedParams.put("seq1", seq1Param);
+            decodedParams.put("seq2", seq2Param);
+            DynamoDbMetricsStore.store("dna", decodedParams, metrics, executionTimeMs);
             MetricsTool.cleanup();
 
             he.sendResponseHeaders(200, response.getBytes().length);

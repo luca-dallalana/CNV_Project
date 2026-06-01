@@ -222,9 +222,23 @@ ENDCONFIG
 
 echo "Step 7: Initial Workers"
 aws ec2 run-instances --launch-template LaunchTemplateId=$LAUNCH_TEMPLATE_ID --count 2 > /dev/null
-sleep 60
+echo "Waiting 3 minutes for workers to boot..."
+sleep 180
 ssh -i ~/.ssh/cnv-key.pem ec2-user@$LB_IP "sudo systemctl restart cnv-lb.service" 2>/dev/null
-sleep 15
+
+echo "Polling LB until healthy workers are registered..."
+attempts=0
+until [ $attempts -ge 36 ] || curl -sf "http://$LB_IP:8000/test" > /dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    echo "  Not ready yet ($attempts/36), retrying in 10s..."
+    sleep 10
+done
+
+if curl -sf "http://$LB_IP:8000/test" > /dev/null 2>&1; then
+    echo "LB is ready."
+else
+    echo "Warning: LB did not become healthy within 6 minutes. Check worker boot logs."
+fi
 
 echo ""
 echo "Deployment complete!"
