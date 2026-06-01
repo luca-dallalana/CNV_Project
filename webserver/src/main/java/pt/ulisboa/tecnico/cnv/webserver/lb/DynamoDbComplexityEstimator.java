@@ -129,9 +129,10 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
     }
 
     private static long complexityFromItem(Map<String, AttributeValue> item) {
+        long instructions = parseLong(item.get("instructions"));
         long branches = parseLong(item.get("branches"));
         long methodCalls = parseLong(item.get("methodCalls"));
-        return branches + (methodCalls * 1L);
+        return instructions + branches + methodCalls;
     }
 
     private static Map<String, String> extractParams(Map<String, AttributeValue> item) {

@@ -11,7 +11,7 @@ import javassist.CtClass;
 public class MetricsTool extends AbstractJavassistTool {
 
     // private static final ThreadLocal<Long> basicBlocks = ThreadLocal.withInitial(() -> 0L);
-    // private static final ThreadLocal<Long> instructions = ThreadLocal.withInitial(() -> 0L);
+    private static final ThreadLocal<Long> instructions = ThreadLocal.withInitial(() -> 0L);
     // private static final ThreadLocal<Long> loopIterations = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> branches = ThreadLocal.withInitial(() -> 0L);
     private static final ThreadLocal<Long> methodCalls = ThreadLocal.withInitial(() -> 0L);
@@ -22,7 +22,7 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void reset() {
         // basicBlocks.set(0L);
-        // instructions.set(0L);
+        instructions.set(0L);
         // loopIterations.set(0L);
         branches.set(0L);
         methodCalls.set(0L);
@@ -31,7 +31,7 @@ public class MetricsTool extends AbstractJavassistTool {
     public static Map<String, Long> getMetrics() {
         Map<String, Long> metrics = new HashMap<>();
         // metrics.put("basicBlocks", basicBlocks.get());
-        // metrics.put("instructions", instructions.get());
+        metrics.put("instructions", instructions.get());
         // metrics.put("loopIterations", loopIterations.get());
         metrics.put("branches", branches.get());
         metrics.put("methodCalls", methodCalls.get());
@@ -40,7 +40,7 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void cleanup() {
         // basicBlocks.remove();
-        // instructions.remove();
+        instructions.remove();
         // loopIterations.remove();
         branches.remove();
         methodCalls.remove();
@@ -53,6 +53,10 @@ public class MetricsTool extends AbstractJavassistTool {
     // public static void incLoopIterations() {
     //     loopIterations.set(loopIterations.get() + 1L);
     // }
+
+    public static void incInstructions(int length) {
+        instructions.set(instructions.get() + length);
+    }
 
     public static void incBranch() {
         branches.set(branches.get() + 1L);
@@ -85,10 +89,11 @@ public class MetricsTool extends AbstractJavassistTool {
 
     @Override
     protected void transform(BasicBlock block) throws CannotCompileException {
+        block.behavior.insertAt(block.line, String.format("%s.incInstructions(%d);",
+            MetricsTool.class.getName(), block.length));
         if (isBranchTarget(block)) {
-            String instrumentationCode = String.format("%s.incBranch();",
-                MetricsTool.class.getName());
-            block.behavior.insertAt(block.line, instrumentationCode);
+            block.behavior.insertAt(block.line, String.format("%s.incBranch();",
+                MetricsTool.class.getName()));
         }
     }
 
@@ -142,8 +147,9 @@ public class MetricsTool extends AbstractJavassistTool {
 
     public static void logMetrics() {
         Map<String, Long> metrics = getMetrics();
-        System.out.println(String.format("[Metrics] Thread=%s, Branches=%d, Methods=%d",
+        System.out.println(String.format("[Metrics] Thread=%s, Instructions=%d, Branches=%d, Methods=%d",
                 Thread.currentThread().getId(),
+                metrics.get("instructions"),
                 metrics.get("branches"),
                 metrics.get("methodCalls")));
     }

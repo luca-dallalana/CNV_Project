@@ -48,6 +48,7 @@ public final class DynamoDbMetricsStore {
             item.put("requestId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
             item.put("workload", AttributeValue.builder().s(workload).build());
             item.put("timestamp", AttributeValue.builder().n(Long.toString(System.currentTimeMillis())).build());
+            item.put("instructions", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("instructions", 0L))).build());
             item.put("branches", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("branches", 0L))).build());
             item.put("methodCalls", AttributeValue.builder().n(Long.toString(metrics.getOrDefault("methodCalls", 0L))).build());
             item.put("executionTimeMs", AttributeValue.builder().n(Long.toString(executionTimeMs)).build());
