@@ -59,6 +59,16 @@ aws iam put-role-policy --role-name CNV-LB-Role --policy-name CNV-LB-Policy --po
     },
     {
       \"Effect\": \"Allow\",
+      \"Action\": \"cloudwatch:GetMetricStatistics\",
+      \"Resource\": \"*\"
+    },
+    {
+      \"Effect\": \"Allow\",
+      \"Action\": \"lambda:InvokeFunction\",
+      \"Resource\": \"*\"
+    },
+    {
+      \"Effect\": \"Allow\",
       \"Action\": \"iam:PassRole\",
       \"Resource\": \"arn:aws:iam::${ACCOUNT_ID}:role/CNV-Worker-Role\"
     }
@@ -179,6 +189,7 @@ LB_SCALE_OUT_PRESSURE=30000000
 LB_SCALE_IN_PRESSURE=8000000
 LB_SCALER_PERIOD_MS=10000
 LB_SCALER_COOLDOWN_MS=60000
+LB_FORWARD_TIMEOUT_MS=300000
 LB_LAMBDA_ENABLED=true
 LB_LAMBDA_FUNCTION_FRACTALS=cnv-fractals
 LB_LAMBDA_FUNCTION_DNA=cnv-dna
