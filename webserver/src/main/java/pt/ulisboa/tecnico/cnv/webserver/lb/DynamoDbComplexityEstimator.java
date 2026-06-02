@@ -157,7 +157,8 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
                 case "dna": {
                     long seq1 = sequenceLength(params.get("seq1"));
                     long seq2 = sequenceLength(params.get("seq2"));
-                    return (seq1 * seq2) / 10L;
+                    long minLength = parsePositive(params.getOrDefault("minLength", "1"));
+                    return (seq1 * seq2 * minLength) / 10L;
                 }
                 default:
                     return 0L;

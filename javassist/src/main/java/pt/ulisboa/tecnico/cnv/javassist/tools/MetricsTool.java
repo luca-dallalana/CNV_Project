@@ -54,12 +54,11 @@ public class MetricsTool extends AbstractJavassistTool {
     //     loopIterations.set(loopIterations.get() + 1L);
     // }
 
-    public static void incInstructions(int length) {
+    public static void incBlock(int length, boolean isBranch) {
         instructions.set(instructions.get() + length);
-    }
-
-    public static void incBranch() {
-        branches.set(branches.get() + 1L);
+        if (isBranch) {
+            branches.set(branches.get() + 1L);
+        }
     }
 
     public static void incMethodCall() {
@@ -89,12 +88,8 @@ public class MetricsTool extends AbstractJavassistTool {
 
     @Override
     protected void transform(BasicBlock block) throws CannotCompileException {
-        block.behavior.insertAt(block.line, String.format("%s.incInstructions(%d);",
-            MetricsTool.class.getName(), block.length));
-        if (isBranchTarget(block)) {
-            block.behavior.insertAt(block.line, String.format("%s.incBranch();",
-                MetricsTool.class.getName()));
-        }
+        block.behavior.insertAt(block.line, String.format("%s.incBlock(%d, %b);",
+            MetricsTool.class.getName(), block.length, isBranchTarget(block)));
     }
 
     private boolean isBranchTarget(BasicBlock block) {
