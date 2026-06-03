@@ -121,10 +121,6 @@ public class MetricsTool extends AbstractJavassistTool {
             return false;
         }
 
-        if (name.equals("equals") && paramCount == 1) {
-            return false;
-        }
-
         if (name.startsWith("get") && paramCount == 0) {
             return false;
         }
