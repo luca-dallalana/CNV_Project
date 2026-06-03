@@ -66,9 +66,7 @@ public final class RequestScheduler {
     }
 
     private static long score(WorkerNode worker, long complexity) {
-        return worker.getEstimatedQueuedWork()
-                + (worker.getInflightRequests() * Math.max(complexity / 5L, 1L))
-                + complexity;
+        return worker.getEstimatedQueuedWork() + complexity;
     }
 
     private static WorkerNode minScore(List<WorkerNode> candidates, long complexity) {

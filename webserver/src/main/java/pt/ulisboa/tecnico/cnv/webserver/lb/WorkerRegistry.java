@@ -47,7 +47,7 @@ public final class WorkerRegistry {
     public WorkerNode chooseIdleTerminationCandidate() {
         for (WorkerNode node : nodes.values()) {
             if (node.isDraining()) continue;
-            if (node.getInflightRequests() > 0 || node.getEstimatedQueuedWork() > 0) continue;
+            if (node.getInflightRequests() > 0) continue;
             return node;
         }
         return null;

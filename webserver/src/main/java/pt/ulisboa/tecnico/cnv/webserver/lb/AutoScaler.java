@@ -69,7 +69,6 @@ public final class AutoScaler {
             for (WorkerNode worker : workerRegistry.allNodes()) {
                 if (worker.isDraining()
                         && worker.getInflightRequests() == 0
-                        && worker.getEstimatedQueuedWork() == 0
                         && !worker.getInstanceId().startsWith("static-")) {
                     System.out.println("[AS] Terminating drained worker: " + worker.getInstanceId());
                     ec2Discovery.scaleInOne(worker.getInstanceId());
