@@ -28,7 +28,7 @@ public final class WorkerHttpClient {
         HttpURLConnection connection = (HttpURLConnection) new URL(urlBuilder.toString()).openConnection();
         connection.setRequestMethod("GET");
         connection.setConnectTimeout((int) config.getForwardTimeout().toMillis());
-        connection.setReadTimeout((int) config.getForwardTimeout().toMillis());
+        connection.setReadTimeout(0); // no read timeout: long-running jobs must complete; dead workers signal via TCP reset
 
         int statusCode = connection.getResponseCode();
         Map<String, List<String>> headers = connection.getHeaderFields();

@@ -118,7 +118,7 @@ public final class LbConfig {
                 region,
                 envString("CNV_METRICS_TABLE", DEFAULT_METRICS_TABLE),
                 envInt("LB_REQUEST_RETRY_COUNT", 1),
-                Duration.ofMillis(envInt("LB_FORWARD_TIMEOUT_MS", 15000)),
+                Duration.ofMillis(envInt("LB_FORWARD_TIMEOUT_MS", 5000)),
                 minWorkers,
                 maxWorkers,
                 scaleOutPressure,
