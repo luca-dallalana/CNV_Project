@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 
-public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
+public final class DynamoDbComplexityEstimator {
     private static final int NUM_QUANTILES = 5;
     private static final int MIN_QUANTILE_SAMPLES = NUM_QUANTILES;
 
@@ -44,7 +44,6 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
         }
     }
 
-    @Override
     public long estimate(String workload, Map<String, String> params) {
         long driver = predictLoops(workload, params);
 
