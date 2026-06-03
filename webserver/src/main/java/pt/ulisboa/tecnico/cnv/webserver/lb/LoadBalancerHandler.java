@@ -14,7 +14,7 @@ import com.sun.net.httpserver.HttpHandler;
 public final class LoadBalancerHandler implements HttpHandler {
     private final String workload;
     private final RequestScheduler scheduler;
-    private final ComplexityEstimator complexityEstimator;
+    private final DynamoDbComplexityEstimator complexityEstimator;
     private final WorkerHttpClient workerHttpClient;
     private final LambdaInvoker lambdaInvoker;
     private final LbConfig config;
@@ -22,7 +22,7 @@ public final class LoadBalancerHandler implements HttpHandler {
     public LoadBalancerHandler(
             String workload,
             RequestScheduler scheduler,
-            ComplexityEstimator complexityEstimator,
+            DynamoDbComplexityEstimator complexityEstimator,
             WorkerHttpClient workerHttpClient,
             LambdaInvoker lambdaInvoker,
             LbConfig config) {

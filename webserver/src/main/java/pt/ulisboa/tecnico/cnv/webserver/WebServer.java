@@ -8,7 +8,6 @@ import com.sun.net.httpserver.HttpServer;
 
 import pt.ulisboa.tecnico.cnv.webserver.lb.AutoScaler;
 import pt.ulisboa.tecnico.cnv.webserver.lb.CloudWatchMetricsPoller;
-import pt.ulisboa.tecnico.cnv.webserver.lb.ComplexityEstimator;
 import pt.ulisboa.tecnico.cnv.webserver.lb.DynamoDbComplexityEstimator;
 import pt.ulisboa.tecnico.cnv.webserver.lb.Ec2WorkerDiscovery;
 import pt.ulisboa.tecnico.cnv.webserver.lb.LambdaInvoker;
