@@ -222,7 +222,35 @@ public final class DynamoDbComplexityEstimator implements ComplexityEstimator {
     }
 
     private static long heuristic(String workload, Map<String, String> params) {
-        return predictLoops(workload, params);
+        try {
+            switch (workload) {
+                case "fractals": {
+                    long w  = parsePositive(params.get("w"));
+                    long h  = parsePositive(params.get("h"));
+                    long it = parsePositive(params.get("iterations"));
+                    // Per-pixel instruction count saturates ~1500 for high iterations
+                    return w * h * Math.min(it * 15L, 1500L);
+                }
+                case "grayscott": {
+                    long size = parsePositive(params.get("size"));
+                    long it   = parsePositive(params.get("maxIterations"));
+                    long loops = size * size * it;
+                    boolean early = "true".equalsIgnoreCase(params.get("stopOnExtinction"));
+                    // stopOnExtinction=true terminates far earlier than maxIterations
+                    return early ? loops / 3L : loops * 225L;
+                }
+                case "dna": {
+                    long seq1 = sequenceLength(params.get("seq1"));
+                    long seq2 = sequenceLength(params.get("seq2"));
+                    // Dominant cost is O(seq1 * seq2) DP; minLength barely affects instruction count
+                    return seq1 * seq2 * 40L;
+                }
+                default:
+                    return 0;
+            }
+        } catch (IllegalArgumentException e) {
+            return 0;
+        }
     }
 
     private static long sequenceLength(String value) {
