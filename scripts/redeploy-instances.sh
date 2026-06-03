@@ -92,7 +92,7 @@ ENDCONFIG
 
 aws ec2 run-instances \
   --launch-template LaunchTemplateId=$LAUNCH_TEMPLATE_ID \
-  --count 2 > /dev/null
+  --count 2 --monitoring Enabled=true > /dev/null
 
 sleep 60
 

@@ -221,7 +221,7 @@ sudo systemctl start cnv-lb.service
 ENDCONFIG
 
 echo "Step 7: Initial Workers"
-aws ec2 run-instances --launch-template LaunchTemplateId=$LAUNCH_TEMPLATE_ID --count 2 > /dev/null
+aws ec2 run-instances --launch-template LaunchTemplateId=$LAUNCH_TEMPLATE_ID --count 2 --monitoring Enabled=true > /dev/null
 echo "Waiting 3 minutes for workers to boot..."
 sleep 180
 ssh -i ~/.ssh/cnv-key.pem ec2-user@$LB_IP "sudo systemctl restart cnv-lb.service" 2>/dev/null
