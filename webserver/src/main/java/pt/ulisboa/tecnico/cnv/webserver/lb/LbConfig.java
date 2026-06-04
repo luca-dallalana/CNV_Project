@@ -37,6 +37,7 @@ public final class LbConfig {
     private final long lambdaPressureThreshold;
     private final double cpuScaleOutThreshold;
     private final double cpuScaleInThreshold;
+    private final long retrySleepMs;
 
     private LbConfig(
             int listenPort,
@@ -66,7 +67,8 @@ public final class LbConfig {
             long lambdaComplexityThreshold,
             long lambdaPressureThreshold,
             double cpuScaleOutThreshold,
-            double cpuScaleInThreshold) {
+            double cpuScaleInThreshold,
+            long retrySleepMs) {
         this.listenPort = listenPort;
         this.workerPort = workerPort;
         this.workerProtocol = workerProtocol;
@@ -95,6 +97,7 @@ public final class LbConfig {
         this.lambdaPressureThreshold = lambdaPressureThreshold;
         this.cpuScaleOutThreshold = cpuScaleOutThreshold;
         this.cpuScaleInThreshold = cpuScaleInThreshold;
+        this.retrySleepMs = retrySleepMs;
     }
 
     public static LbConfig fromEnv() {
@@ -140,7 +143,8 @@ public final class LbConfig {
                 envLong("LB_LAMBDA_COMPLEXITY_THRESHOLD", 1000000L),
                 envLong("LB_LAMBDA_PRESSURE_THRESHOLD", scaleOutPressure),
                 envDouble("LB_CPU_SCALE_OUT_THRESHOLD", 60.0),
-                envDouble("LB_CPU_SCALE_IN_THRESHOLD", 20.0));
+                envDouble("LB_CPU_SCALE_IN_THRESHOLD", 20.0),
+                envLong("LB_RETRY_SLEEP_MS", 1000L));
     }
 
     private static List<String> parseStaticWorkers(String raw) {
@@ -314,5 +318,9 @@ public final class LbConfig {
 
     public double getCpuScaleInThreshold() {
         return cpuScaleInThreshold;
+    }
+
+    public long getRetrySleepMs() {
+        return retrySleepMs;
     }
 }

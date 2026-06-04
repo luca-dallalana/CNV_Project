@@ -69,6 +69,7 @@ public final class LoadBalancerHandler implements HttpHandler {
         int maxAttempts = Math.max(1, config.getRequestRetryCount() + 1);
         Set<String> excluded = new HashSet<>();
         String lastError = null;
+        boolean lambdaFallbackAttempted = false;
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             WorkerNode worker = scheduler.selectWorker(excluded, predictedComplexity);
@@ -77,9 +78,10 @@ public final class LoadBalancerHandler implements HttpHandler {
                     worker.getInstanceId(), worker.getEstimatedQueuedWork(), worker.getInflightRequests()));
             }
             if (worker == null) {
-                if (lambdaInvoker != null && lambdaFunction != null
+                if (!lambdaFallbackAttempted && lambdaInvoker != null && lambdaFunction != null
                         && predictedComplexity <= config.getLambdaComplexityThreshold()) {
                     System.out.println("[LB] All workers saturated, falling back to Lambda: " + lambdaFunction);
+                    lambdaFallbackAttempted = true;
                     try {
                         String result = lambdaInvoker.invoke(lambdaFunction, params);
                         writeText(exchange, 200, result);
@@ -88,8 +90,15 @@ public final class LoadBalancerHandler implements HttpHandler {
                         System.out.println("[LB] Lambda fallback failed: " + e.getMessage());
                     }
                 }
-                writeText(exchange, 503, "No healthy workers available.");
-                return;
+                lastError = "No healthy workers available";
+                excluded.clear();
+                try {
+                    Thread.sleep(config.getRetrySleepMs());
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                continue;
             }
 
             WorkerHttpClient.ForwardResult successResult = null;
@@ -99,7 +108,16 @@ public final class LoadBalancerHandler implements HttpHandler {
                 if (result.getStatusCode() >= 500) {
                     System.out.println(String.format("[LB] Worker %s returned %d, retrying",
                         worker.getInstanceId(), result.getStatusCode()));
-                    excluded.add(worker.getInstanceId());
+                    if (result.getStatusCode() == 503) {
+                        try {
+                            Thread.sleep(config.getRetrySleepMs());
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    } else {
+                        excluded.add(worker.getInstanceId());
+                    }
                     lastError = "Worker " + worker.getInstanceId() + " returned " + result.getStatusCode();
                 } else {
                     successResult = result;
