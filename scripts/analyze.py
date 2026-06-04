@@ -42,6 +42,8 @@ lb_lines = lb_log.read_text().splitlines()
 
 scale_outs, drains, terminates = [], [], []
 as_events, lambda_routes, ec2_selects = [], 0, 0
+worker_ticks = defaultdict(list)   # iid -> list of (ts, queued_work)
+worker_first_seen = {}
 
 for line in lb_lines:
     ts = re.search(r'(\d+:\d+:\d+)', line)
@@ -53,6 +55,11 @@ for line in lb_lines:
                 "pressure": int(m.group(1)),
                 "cpu": float(m.group(2)) if m.group(2) != "n/a" else None,
             })
+    elif "[AS] workers:" in line and ts:
+        for iid, qw in re.findall(r'(i-\w+)=(\d+)', line):
+            worker_ticks[iid].append((ts.group(1), int(qw)))
+            if iid not in worker_first_seen:
+                worker_first_seen[iid] = ts.group(1)
     elif "Scale-out:" in line and ts:
         p  = re.search(r'pressure=(\d+)', line)
         tk = re.search(r'ticks=(\d+)', line)
@@ -102,6 +109,19 @@ if as_events:
         print(f"\n  pressure  min={min(pressures):,}  max={max(pressures):,}  mean={int(sum(pressures)/len(pressures)):,}")
     if cpus:
         print(f"  cpu       min={min(cpus):.1f}%  max={max(cpus):.1f}%  mean={sum(cpus)/len(cpus):.1f}%")
+
+if worker_ticks:
+    print("\n" + "=" * 60)
+    print("  PER-WORKER QUEUED COMPLEXITY (5s ticks)")
+    print("=" * 60)
+    print(f"\n  {'worker':<16}  {'first seen':>10}  {'avg (B)':>10}  {'max (B)':>10}  {'active ticks':>12}")
+    for iid in sorted(worker_ticks, key=lambda x: worker_first_seen[x]):
+        ticks = worker_ticks[iid]
+        loads = [qw for _, qw in ticks]
+        avg = sum(loads) / len(loads) if loads else 0
+        mx  = max(loads) if loads else 0
+        active = sum(1 for q in loads if q > 0)
+        print(f"  {iid:<16}  {worker_first_seen[iid]:>10}  {avg/1e9:>10.2f}  {mx/1e9:>10.2f}  {active:>10}/{len(loads)}")
 
 print("\n" + "=" * 60)
 print("  ROUTING BREAKDOWN")

@@ -107,6 +107,11 @@ public final class AutoScaler {
 
             System.out.println(String.format("[AS] pressure=%d, avgCpu=%s",
                     pressure, avgCpu.isPresent() ? String.format("%.1f%%", avgCpu.getAsDouble()) : "n/a"));
+            StringBuilder wl = new StringBuilder("[AS] workers:");
+            for (WorkerNode w : workerRegistry.allNodes()) {
+                wl.append(" ").append(w.getInstanceId()).append("=").append(w.getEstimatedQueuedWork());
+            }
+            System.out.println(wl.toString());
 
             if (pressure > config.getScaleOutPressure() || cpuHigh) {
                 highPressureTicks++;
