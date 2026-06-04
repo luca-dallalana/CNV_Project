@@ -16,7 +16,6 @@ SSH_PID=$!
 
 "$VENV" "$SCRIPTS/monitor.py" &
 MON_PID=$!
-lca
 "$VENV" "$SCRIPTS/loadtest-ec2.py"
 
 kill "$SSH_PID" "$MON_PID" 2>/dev/null || true

@@ -43,15 +43,15 @@ def loop(label, url, params=None):
         do_request(label, url, params)
 
 threads = [
-    threading.Thread(target=loop, args=("FRAC-L-1", f"{BASE}/fractals",
+    threading.Thread(target=loop, args=("FRAC-L", f"{BASE}/fractals",
         {"w": "6000", "h": "6000", "iterations": "100000"}), daemon=True),
-    threading.Thread(target=loop, args=("FRAC-L-2", f"{BASE}/fractals",
-        {"w": "6000", "h": "6000", "iterations": "100000"}), daemon=True),
-    threading.Thread(target=loop, args=("GS-L-1", f"{BASE}/grayscott",
+    threading.Thread(target=loop, args=("FRAC-M", f"{BASE}/fractals",
+        {"w": "4000", "h": "2000", "iterations": "1000"}), daemon=True),
+    threading.Thread(target=loop, args=("GS-L", f"{BASE}/grayscott",
         {"size": "256", "maxIterations": "2500", "f": "0.030", "k": "0.062",
          "stopOnExtinction": "false", "seedMode": "stripe"}), daemon=True),
-    threading.Thread(target=loop, args=("GS-L-2", f"{BASE}/grayscott",
-        {"size": "256", "maxIterations": "2500", "f": "0.030", "k": "0.062",
+    threading.Thread(target=loop, args=("GS-M", f"{BASE}/grayscott",
+        {"size": "256", "maxIterations": "1000", "f": "0.030", "k": "0.062",
          "stopOnExtinction": "false", "seedMode": "stripe"}), daemon=True),
     threading.Thread(target=loop, args=("DNA-XL", f"{BASE}/dna",
         {"minLength": "250", "seq1": f"ecoli:{SEQ_ECOLI}",
