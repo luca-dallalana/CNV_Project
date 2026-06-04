@@ -16,6 +16,7 @@ public final class AutoScaler {
     private final WorkerHttpClient workerHttpClient;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile long lastScalingActionAt = 0L;
+    private volatile long lastScaleInAt = 0L;
     private static final int SUSTAINED_TICKS = 3;
     // Only accessed from the single scheduler thread — no synchronization needed.
     private int highPressureTicks = 0;
@@ -116,25 +117,23 @@ public final class AutoScaler {
             }
 
             long now = System.currentTimeMillis();
-            if ((now - lastScalingActionAt) < config.getScalerCooldown().toMillis()) {
-                return;
-            }
 
             if (highPressureTicks >= SUSTAINED_TICKS && effectiveWorkers < config.getMaxWorkers()) {
                 System.out.println("[AS] Scale-out: sustained pressure=" + pressure + " ticks=" + highPressureTicks + " pending=" + pendingWorkerCount);
                 ec2Discovery.scaleOutOne();
                 pendingWorkerCount++;
-                lastScalingActionAt = now;
+                lastScaleInAt = now;
                 highPressureTicks = 0;
                 return;
             }
 
-            if (lowPressureTicks >= SUSTAINED_TICKS && activeWorkers > config.getMinWorkers()) {
+            if (lowPressureTicks >= SUSTAINED_TICKS && activeWorkers > config.getMinWorkers()
+                    && (now - lastScaleInAt) >= config.getScalerCooldown().toMillis()) {
                 WorkerNode candidate = workerRegistry.chooseIdleTerminationCandidate();
                 if (candidate != null && !candidate.getInstanceId().startsWith("static-")) {
                     System.out.println("[AS] Draining worker: " + candidate.getInstanceId());
                     candidate.setDraining(true);
-                    lastScalingActionAt = now;
+                    lastScaleInAt = now;
                     lowPressureTicks = 0;
                 }
             }

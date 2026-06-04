@@ -54,17 +54,6 @@ public final class LoadBalancerHandler implements HttpHandler {
         System.out.println(String.format("[LB] Request: workload=%s, complexity=%d", workload, predictedComplexity));
 
         String lambdaFunction = config.getLambdaFunctionName(workload);
-        if (lambdaInvoker != null && lambdaFunction != null && scheduler.shouldUseLambda(predictedComplexity)) {
-            System.out.println(String.format("[LB] Routing to Lambda: function=%s", lambdaFunction));
-            try {
-                String result = lambdaInvoker.invoke(lambdaFunction, params);
-                writeText(exchange, 200, result);
-                System.out.println("[LB] Lambda invocation succeeded.");
-                return;
-            } catch (IOException e) {
-                System.out.println("[LB] Lambda failed, falling back to workers: " + e.getMessage());
-            }
-        }
 
         int maxAttempts = Math.max(1, config.getRequestRetryCount() + 1);
         Set<String> excluded = new HashSet<>();
