@@ -22,6 +22,7 @@ public final class LbConfig {
     private final int maxWorkers;
     private final long scaleOutPressure;
     private final long scaleInPressure;
+    private final long hardCeiling;
     private final Duration scalerPeriod;
     private final Duration scalerCooldown;
     private final String workerLaunchTemplateId;
@@ -51,6 +52,7 @@ public final class LbConfig {
             int maxWorkers,
             long scaleOutPressure,
             long scaleInPressure,
+            long hardCeiling,
             Duration scalerPeriod,
             Duration scalerCooldown,
             String workerLaunchTemplateId,
@@ -78,6 +80,7 @@ public final class LbConfig {
         this.maxWorkers = maxWorkers;
         this.scaleOutPressure = scaleOutPressure;
         this.scaleInPressure = scaleInPressure;
+        this.hardCeiling = hardCeiling;
         this.scalerPeriod = scalerPeriod;
         this.scalerCooldown = scalerCooldown;
         this.workerLaunchTemplateId = workerLaunchTemplateId;
@@ -123,6 +126,7 @@ public final class LbConfig {
                 maxWorkers,
                 scaleOutPressure,
                 envLong("LB_SCALE_IN_PRESSURE", 8000000L),
+                envLong("LB_HARD_CEILING", scaleOutPressure * 3L),
                 Duration.ofMillis(envInt("LB_SCALER_PERIOD_MS", 10000)),
                 Duration.ofMillis(envInt("LB_SCALER_COOLDOWN_MS", 60000)),
                 launchTemplateId,
@@ -245,6 +249,10 @@ public final class LbConfig {
 
     public long getScaleInPressure() {
         return scaleInPressure;
+    }
+
+    public long getHardCeiling() {
+        return hardCeiling;
     }
 
     public Duration getScalerPeriod() {

@@ -16,7 +16,7 @@ public final class RequestScheduler {
 
     public WorkerNode selectWorker(Set<String> excludedWorkers, long complexity) {
         long spreadThreshold = config.getScaleOutPressure();
-        long hardCeiling = config.getScaleOutPressure() * 3L;
+        long hardCeiling = config.getHardCeiling();
         long packCeiling = config.getScaleOutPressure();
 
         int activeCount = Math.max(1, workerRegistry.activeWorkerCount());
