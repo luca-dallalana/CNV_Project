@@ -45,7 +45,7 @@ public final class DynamoDbComplexityEstimator {
     }
 
     public long estimate(String workload, Map<String, String> params) {
-        long driver = predictLoops(workload, params);
+        long driver = heuristic(workload, params);
 
         long[] boundaries = workloadBoundaries.get(workload);
         long[] quantileMedians = workloadQuantileMedians.get(workload);
@@ -82,7 +82,7 @@ public final class DynamoDbComplexityEstimator {
                     continue;
                 }
                 Map<String, String> itemParams = extractParams(item);
-                long driver = predictLoops(workload, itemParams);
+                long driver = heuristic(workload, itemParams);
                 driverComplexityByWorkload.computeIfAbsent(workload, k -> new ArrayList<>())
                         .add(new long[]{driver, complexity});
                 workloadSamples.computeIfAbsent(workload, k -> new ArrayList<>()).add(complexity);
@@ -136,34 +136,6 @@ public final class DynamoDbComplexityEstimator {
                     newBoundaries.size(), newWorkloadMedians.size()));
         } catch (Exception e) {
             System.out.println("[CACHE] Refresh failed: " + e.getMessage());
-        }
-    }
-
-    private static long predictLoops(String workload, Map<String, String> params) {
-        try {
-            switch (workload) {
-                case "fractals": {
-                    long w = parsePositive(params.get("w"));
-                    long h = parsePositive(params.get("h"));
-                    long it = parsePositive(params.get("iterations"));
-                    return (w * h * it) / 2L;
-                }
-                case "grayscott": {
-                    long size = parsePositive(params.get("size"));
-                    long maxIterations = parsePositive(params.get("maxIterations"));
-                    return size * size * maxIterations;
-                }
-                case "dna": {
-                    long seq1 = sequenceLength(params.get("seq1"));
-                    long seq2 = sequenceLength(params.get("seq2"));
-                    long minLength = parsePositive(params.getOrDefault("minLength", "1"));
-                    return (seq1 * seq2 * minLength) / 10L;
-                }
-                default:
-                    return 0L;
-            }
-        } catch (IllegalArgumentException e) {
-            return 0L;
         }
     }
 
