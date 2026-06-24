@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-import threading, time, urllib.request, urllib.parse, urllib.error, os
+# Usage: LB=<ip> [PORT=8000] [DURATION=720] python3 scripts/loadtest-ec2.py
+import threading, time, urllib.request, urllib.parse, urllib.error, os, sys
 
-LB       = "35.173.138.24"
-BASE     = f"http://{LB}:8000"
-DURATION = 720
+LB       = os.environ.get("LB", "localhost")
+PORT     = os.environ.get("PORT", "8000")
+BASE     = f"http://{LB}:{PORT}"
+DURATION = int(os.environ.get("DURATION", "720"))
 
 LOGFILE = f"/tmp/cnv_experiment_{int(time.time())}.log"
 open("/tmp/cnv_experiment_logpath.txt", "w").write(LOGFILE)
@@ -21,9 +23,14 @@ def read_fasta(path):
     with open(path) as f:
         return "".join(l.strip() for l in f if not l.startswith(">"))
 
-WDIR      = os.path.expanduser("~/Documents/IST/SD/CNV/LABS/Workloads")
-SEQ_ECOLI = read_fasta(f"{WDIR}/genome-escherichia-coli-25k.fasta.txt")
-SEQ_SALM  = read_fasta(f"{WDIR}/genome-salmonella-enterica-25k.fasta")
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+WDIR     = os.environ.get("WORKLOADS_DIR", os.path.join(_script_dir, "..", "workloads"))
+if not os.path.isdir(WDIR):
+    print(f"ERROR: workloads directory not found: {WDIR}", file=sys.stderr)
+    print("Set WORKLOADS_DIR to the directory containing the .fasta files.", file=sys.stderr)
+    sys.exit(1)
+SEQ_HMC  = read_fasta(os.path.join(WDIR, "human-mc-10k.fasta"))
+SEQ_SARS = read_fasta(os.path.join(WDIR, "sars-10k.fasta"))
 
 def do_request(label, url, params=None):
     full_url = url + "?" + urllib.parse.urlencode(params) if params else url
@@ -44,7 +51,7 @@ def loop(label, url, params=None):
 
 threads = [
     threading.Thread(target=loop, args=("FRAC-L", f"{BASE}/fractals",
-        {"w": "6000", "h": "6000", "iterations": "100000"}), daemon=True),
+        {"w": "4000", "h": "4000", "iterations": "1000"}), daemon=True),
     threading.Thread(target=loop, args=("FRAC-M", f"{BASE}/fractals",
         {"w": "4000", "h": "2000", "iterations": "1000"}), daemon=True),
     threading.Thread(target=loop, args=("GS-L", f"{BASE}/grayscott",
@@ -53,9 +60,9 @@ threads = [
     threading.Thread(target=loop, args=("GS-M", f"{BASE}/grayscott",
         {"size": "256", "maxIterations": "1000", "f": "0.030", "k": "0.062",
          "stopOnExtinction": "false", "seedMode": "stripe"}), daemon=True),
-    threading.Thread(target=loop, args=("DNA-XL", f"{BASE}/dna",
-        {"minLength": "250", "seq1": f"ecoli:{SEQ_ECOLI}",
-         "seq2": f"salmonella:{SEQ_SALM}"}), daemon=True),
+    threading.Thread(target=loop, args=("DNA-L", f"{BASE}/dna",
+        {"minLength": "100", "seq1": f"human:{SEQ_HMC}",
+         "seq2": f"sars:{SEQ_SARS}"}), daemon=True),
 ]
 
 log(f"EXPERIMENT_START  workers={len(threads)}  duration={DURATION}s  mode=ec2-dominant")

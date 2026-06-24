@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import boto3, time
+import boto3, time, os
 from datetime import datetime, timezone, timedelta
 
-DURATION = 780
-INTERVAL = 60
+DURATION = int(os.environ.get("DURATION", "780"))
+INTERVAL = int(os.environ.get("INTERVAL", "60"))
+REGION   = os.environ.get("AWS_REGION", "us-east-1")
 LOG      = f"/tmp/cnv_monitor_{int(time.time())}.log"
 
-ec2 = boto3.client("ec2",        region_name="us-east-1")
-cw  = boto3.client("cloudwatch", region_name="us-east-1")
+ec2 = boto3.client("ec2",        region_name=REGION)
+cw  = boto3.client("cloudwatch", region_name=REGION)
 
 def workers():
     resp = ec2.describe_instances(Filters=[

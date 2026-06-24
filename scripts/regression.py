@@ -1,17 +1,21 @@
 import time
+import os
 import boto3
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from scipy.optimize import nnls
 
-client = boto3.client('dynamodb', region_name='us-east-1')
+REGION = os.environ.get("AWS_REGION", "us-east-1")
+TABLE  = os.environ.get("CNV_METRICS_TABLE", "cnv-metrics")
+
+client = boto3.client('dynamodb', region_name=REGION)
 
 items = []
-resp = client.scan(TableName='cnv-metrics')
+resp = client.scan(TableName=TABLE)
 items += resp['Items']
 while 'LastEvaluatedKey' in resp:
     time.sleep(5)
-    resp = client.scan(TableName='cnv-metrics', ExclusiveStartKey=resp['LastEvaluatedKey'])
+    resp = client.scan(TableName=TABLE, ExclusiveStartKey=resp['LastEvaluatedKey'])
     items += resp['Items']
 
 def predict_loops(workload, params):

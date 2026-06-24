@@ -1,9 +1,15 @@
 #!/bin/bash
 set -e
 
-WORKER="${WORKER:-54.92.173.122}"
+WORKER="${WORKER:-localhost}"
 BASE="http://$WORKER:${PORT:-8000}"
-WDIR="${WORKLOADS_DIR:-/Users/lucagrespandallalana/Documents/IST/SD/CNV/LABS/Workloads}"
+WDIR="${WORKLOADS_DIR:-$(dirname "$0")/../workloads}"
+
+if [ ! -d "$WDIR" ]; then
+    echo "ERROR: workloads directory not found: $WDIR"
+    echo "Set WORKLOADS_DIR to the directory containing the .fasta files."
+    exit 1
+fi
 
 SEQ_SARS="sars-10k:$(cat $WDIR/sars-10k.fasta)"
 SEQ_HUMAN="human-mc-10k:$(cat $WDIR/human-mc-10k.fasta)"

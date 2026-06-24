@@ -2,7 +2,12 @@
 # Usage: ./scripts/run-experiment.sh [LB_IP]
 set -euo pipefail
 
-LB_IP="${1:-35.173.138.24}"
+LB_IP="${1:-${LB:-}}"
+if [ -z "$LB_IP" ]; then
+    echo "Usage: $0 <lb-ip>"
+    echo "       or set LB env var"
+    exit 1
+fi
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/cnv-key.pem}"
 VENV="$(dirname "$0")/../.venv/bin/python3"
 SCRIPTS="$(dirname "$0")"

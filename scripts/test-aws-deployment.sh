@@ -27,7 +27,7 @@ fi
 
 curl -s --max-time 15 "http://$LB_IP:8000/fractals?w=200&h=200&iterations=50" > /dev/null
 
-ssh -i ~/.ssh/cnv-key.pem ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service | grep 'Request: workload=fractals' | tail -2" > /tmp/cnv-test-logs.txt
+ssh -i "${SSH_KEY:-$HOME/.ssh/cnv-key.pem}" ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service | grep 'Request: workload=fractals' | tail -2" > /tmp/cnv-test-logs.txt
 
 FIRST_COMPLEXITY=$(grep -o 'complexity=[0-9]*' /tmp/cnv-test-logs.txt | head -1 | cut -d= -f2)
 SECOND_COMPLEXITY=$(grep -o 'complexity=[0-9]*' /tmp/cnv-test-logs.txt | tail -1 | cut -d= -f2)
@@ -47,14 +47,14 @@ done
 
 sleep 30
 
-AS_LOGS=$(ssh -i ~/.ssh/cnv-key.pem ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service --since '2 minutes ago' | grep '\[AS\]'" || echo "")
+AS_LOGS=$(ssh -i "${SSH_KEY:-$HOME/.ssh/cnv-key.pem}" ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service --since '2 minutes ago' | grep '\[AS\]'" || echo "")
 
 WORKERS_AFTER=$(aws ec2 describe-instances \
   --filters "Name=tag:cnv-role,Values=worker" "Name=instance-state-name,Values=running,pending" \
   --query 'Reservations[*].Instances[*].InstanceId' \
   --output text | wc -w | tr -d ' ')
 
-LB_LOGS=$(ssh -i ~/.ssh/cnv-key.pem ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service | grep 'Selected worker' | tail -5")
+LB_LOGS=$(ssh -i "${SSH_KEY:-$HOME/.ssh/cnv-key.pem}" ec2-user@$LB_IP "sudo journalctl -u cnv-lb.service | grep 'Selected worker' | tail -5")
 UNIQUE_WORKERS=$(echo "$LB_LOGS" | grep -o 'i-[a-f0-9]*' | sort -u | wc -l | tr -d ' ')
 
 if [ "$UNIQUE_WORKERS" -lt 1 ]; then
